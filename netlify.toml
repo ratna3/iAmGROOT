@@ -2,8 +2,10 @@
 # Static site deployment - no build required
 
 [build]
-  # Publish the root directory (all files are static)
-  publish = "."
+  # No build command needed for static site
+  command = ""
+  # Publish from root directory
+  publish = "/"
 
 # Headers for security and performance
 [[headers]]
@@ -30,13 +32,6 @@
   for = "/css/*"
   [headers.values]
     Cache-Control = "public, max-age=86400"
-
-# Redirect all 404s to index.html for SPA-like behavior (optional)
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  conditions = {Role = ["admin", "visitor"]}
 
 # Environment variable placeholders (configure in Netlify UI)
 # SUPABASE_URL = "your-project-url"
