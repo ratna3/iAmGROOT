@@ -135,6 +135,33 @@ body {
     border-color: var(--accent-color);
 }
 
+/* Search Box */
+.search-box {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.search-box input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--accent-light);
+}
+
 /* Conversation List */
 .conversation-list {
     flex: 1;
@@ -339,6 +366,35 @@ body {
 
 .export-btn:hover {
     background-color: var(--bg-secondary);
+}
+
+.regenerate-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.regenerate-btn:hover:not(:disabled) {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.regenerate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.regenerate-btn.loading svg {
+    animation: spin 1s linear infinite;
 }
 
 /* ===== Chat Messages ===== */

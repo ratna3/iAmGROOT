@@ -43,6 +43,7 @@ class ChatApp {
             conversationList: document.getElementById('conversationList'),
             modelSelect: document.getElementById('modelSelect'),
             themeToggle: document.getElementById('themeToggle'),
+            searchInput: document.getElementById('searchInput'),
             
             // Main area
             chatTitle: document.getElementById('chatTitle'),
@@ -57,6 +58,7 @@ class ChatApp {
             
             // Actions
             exportBtn: document.getElementById('exportBtn'),
+            regenerateBtn: document.getElementById('regenerateBtn'),
             
             // Overlays
             loadingOverlay: document.getElementById('loadingOverlay'),
@@ -98,6 +100,12 @@ class ChatApp {
         
         // Export button
         this.elements.exportBtn.addEventListener('click', () => this.exportConversation());
+        
+        // Regenerate button
+        this.elements.regenerateBtn.addEventListener('click', () => this.regenerateLastResponse());
+        
+        // Search input
+        this.elements.searchInput.addEventListener('input', (e) => this.filterConversations(e.target.value));
         
         // Close sidebar on outside click (mobile)
         document.addEventListener('click', (e) => {
@@ -580,6 +588,111 @@ class ChatApp {
         URL.revokeObjectURL(url);
         
         this.showToast('Conversation exported', 'success');
+    }
+
+    // ============ Search & Regenerate ============
+
+    filterConversations(searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        const conversationItems = document.querySelectorAll('.conversation-item');
+        
+        conversationItems.forEach(item => {
+            const title = item.querySelector('.conversation-title')?.textContent.toLowerCase() || '';
+            const preview = item.querySelector('.conversation-preview')?.textContent.toLowerCase() || '';
+            
+            if (term === '' || title.includes(term) || preview.includes(term)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    async regenerateLastResponse() {
+        // Find the last user message
+        const lastUserMessage = [...this.messages].reverse().find(m => m.role === 'user');
+        
+        if (!lastUserMessage || !this.currentConversation) {
+            this.showToast('No message to regenerate', 'error');
+            return;
+        }
+        
+        if (puterChat.isCurrentlyGenerating()) {
+            this.showToast('Already generating a response', 'warning');
+            return;
+        }
+        
+        // Remove the last assistant message from UI
+        const messageElements = this.elements.chatMessages.querySelectorAll('.message.assistant');
+        if (messageElements.length > 0) {
+            const lastAssistantElement = messageElements[messageElements.length - 1];
+            lastAssistantElement.remove();
+        }
+        
+        // Remove last assistant message from local array
+        const lastAssistantIndex = this.messages.map(m => m.role).lastIndexOf('assistant');
+        if (lastAssistantIndex !== -1) {
+            this.messages.splice(lastAssistantIndex, 1);
+        }
+        
+        // Clear puter chat history and rebuild without last assistant message
+        puterChat.clearHistory();
+        for (const msg of this.messages) {
+            if (msg.role === 'user') {
+                puterChat.conversationHistory.push({ role: 'user', content: msg.content });
+            } else if (msg.role === 'assistant') {
+                puterChat.conversationHistory.push({ role: 'assistant', content: msg.content });
+            }
+        }
+        
+        // Disable regenerate button during generation
+        this.elements.regenerateBtn.disabled = true;
+        this.elements.regenerateBtn.classList.add('loading');
+        this.elements.sendBtn.disabled = true;
+        
+        // Add typing indicator
+        const typingElement = this.addTypingIndicator();
+        
+        // Get new AI response with streaming
+        const model = this.elements.modelSelect.value;
+        const responseElement = this.createAssistantMessage();
+        
+        await puterChat.sendMessageStreaming(
+            lastUserMessage.content,
+            // On chunk
+            (chunk, fullText) => {
+                if (typingElement.parentNode) {
+                    typingElement.remove();
+                }
+                responseElement.querySelector('.message-text').textContent = fullText;
+                this.scrollToBottom();
+            },
+            // On complete
+            async (fullResponse) => {
+                await supabaseService.saveMessage(
+                    this.currentConversation.id,
+                    'assistant',
+                    fullResponse,
+                    model
+                );
+                this.messages.push({ role: 'assistant', content: fullResponse });
+                this.elements.sendBtn.disabled = false;
+                this.elements.regenerateBtn.disabled = false;
+                this.elements.regenerateBtn.classList.remove('loading');
+            },
+            // On error
+            (error) => {
+                if (typingElement.parentNode) {
+                    typingElement.remove();
+                }
+                responseElement.remove();
+                this.showToast(`Error: ${error}`, 'error');
+                this.elements.sendBtn.disabled = false;
+                this.elements.regenerateBtn.disabled = false;
+                this.elements.regenerateBtn.classList.remove('loading');
+            },
+            model
+        );
     }
 
     // ============ Loading & Notifications ============

@@ -26,6 +26,11 @@
                 </button>
             </div>
             
+            <!-- Search Box -->
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search conversations..." />
+            </div>
+            
             <div class="conversation-list" id="conversationList">
                 <!-- Conversations will be loaded here -->
             </div>
@@ -74,6 +79,13 @@
                 </button>
                 <h2 class="chat-title" id="chatTitle">New Conversation</h2>
                 <div class="header-actions">
+                    <button class="regenerate-btn" id="regenerateBtn" title="Regenerate Response" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                    </button>
                     <button class="export-btn" id="exportBtn" title="Export Chat">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
