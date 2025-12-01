@@ -111,6 +111,13 @@ body {
     font-weight: 600;
 }
 
+.logo-image {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+}
+
 .logo-icon {
     font-size: 1.5rem;
 }
@@ -426,10 +433,38 @@ body {
     margin-bottom: 16px;
 }
 
+/* 3D Model Container */
+.welcome-3d-model {
+    width: 250px;
+    height: 250px;
+    margin: 0 auto 16px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-3d-model canvas {
+    border-radius: var(--radius-lg);
+}
+
+.welcome-icon-fallback {
+    font-size: 5rem;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
 .welcome-content h2 {
     font-size: 1.75rem;
     font-weight: 700;
     margin-bottom: 8px;
+    background: linear-gradient(135deg, #7c3aed, #22c55e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .welcome-content p {

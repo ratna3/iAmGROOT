@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chatbot - Powered by Puter.js</title>
+    <title>We are GROOTS - AI Chatbot</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Three.js for 3D model -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -15,8 +18,8 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h1 class="logo">
-                    <span class="logo-icon">🤖</span>
-                    <span class="logo-text">AI Chat</span>
+                    <img src="assets/groot.jpg" alt="Groot Logo" class="logo-image">
+                    <span class="logo-text">GROOTS</span>
                 </h1>
                 <button class="new-chat-btn" id="newChatBtn" title="New Chat">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -100,8 +103,8 @@
             <div class="chat-messages" id="chatMessages">
                 <div class="welcome-screen" id="welcomeScreen">
                     <div class="welcome-content">
-                        <div class="welcome-icon">🤖</div>
-                        <h2>Welcome to AI Chat</h2>
+                        <div class="welcome-3d-model" id="grootModelContainer"></div>
+                        <h2>We are GROOTS</h2>
                         <p>Powered by Puter.js - Free, Unlimited Claude API</p>
                         <div class="feature-cards">
                             <div class="feature-card">
@@ -162,5 +165,6 @@
     <script src="js/supabase.js"></script>
     <script src="js/puter-chat.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/groot-model.js"></script>
 </body>
 </html>
