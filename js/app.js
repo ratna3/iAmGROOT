@@ -137,22 +137,38 @@ class ChatApp {
     // ============ File Handling Setup ============
 
     setupFileHandling() {
-        // Attachment button click - opens file picker
-        if (this.elements.attachBtn && this.elements.fileInput) {
-            this.elements.attachBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.elements.fileInput.click();
-            });
-
-            // File input change
-            this.elements.fileInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                    this.handleFileSelection(e.target.files);
-                }
-                e.target.value = ''; // Reset input for same file selection
-            });
+        const attachBtn = document.getElementById('attachBtn');
+        const fileInput = document.getElementById('fileInput');
+        
+        console.log('Setting up file handling:', { attachBtn, fileInput });
+        
+        if (!attachBtn || !fileInput) {
+            console.error('File handling elements not found!');
+            return;
         }
+
+        // Store references
+        this.elements.attachBtn = attachBtn;
+        this.elements.fileInput = fileInput;
+
+        // Attachment button click - opens file picker
+        attachBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Attach button clicked, triggering file input');
+            fileInput.click();
+        };
+
+        // File input change
+        fileInput.onchange = (e) => {
+            console.log('File input changed:', e.target.files);
+            if (e.target.files && e.target.files.length > 0) {
+                this.handleFileSelection(e.target.files);
+            }
+            e.target.value = ''; // Reset input for same file selection
+        };
+        
+        console.log('File handling setup complete');
     }
 
     handleFileSelection(files) {
