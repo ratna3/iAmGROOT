@@ -142,8 +142,8 @@ class ChatApp {
         
         console.log('Setting up file handling:', { attachBtn, fileInput });
         
-        if (!attachBtn || !fileInput) {
-            console.error('File handling elements not found!');
+        if (!fileInput) {
+            console.error('File input element not found!');
             return;
         }
 
@@ -151,22 +151,14 @@ class ChatApp {
         this.elements.attachBtn = attachBtn;
         this.elements.fileInput = fileInput;
 
-        // Attachment button click - opens file picker
-        attachBtn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Attach button clicked, triggering file input');
-            fileInput.click();
-        };
-
-        // File input change
-        fileInput.onchange = (e) => {
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
             console.log('File input changed:', e.target.files);
             if (e.target.files && e.target.files.length > 0) {
                 this.handleFileSelection(e.target.files);
             }
             e.target.value = ''; // Reset input for same file selection
-        };
+        });
         
         console.log('File handling setup complete');
     }
