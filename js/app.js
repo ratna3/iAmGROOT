@@ -137,40 +137,22 @@ class ChatApp {
     // ============ File Handling Setup ============
 
     setupFileHandling() {
-        // Attachment button click
-        this.elements.attachBtn.addEventListener('click', () => {
-            this.elements.fileInput.click();
-        });
+        // Attachment button click - opens file picker
+        if (this.elements.attachBtn && this.elements.fileInput) {
+            this.elements.attachBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.elements.fileInput.click();
+            });
 
-        // File input change
-        this.elements.fileInput.addEventListener('change', (e) => {
-            this.handleFileSelection(e.target.files);
-            e.target.value = ''; // Reset input
-        });
-
-        // Drag and drop
-        const chatMain = document.querySelector('.chat-main');
-        
-        chatMain.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            this.elements.dragDropOverlay.classList.add('active');
-        });
-
-        chatMain.addEventListener('dragleave', (e) => {
-            if (!chatMain.contains(e.relatedTarget)) {
-                this.elements.dragDropOverlay.classList.remove('active');
-            }
-        });
-
-        chatMain.addEventListener('drop', (e) => {
-            e.preventDefault();
-            this.elements.dragDropOverlay.classList.remove('active');
-            this.handleFileSelection(e.dataTransfer.files);
-        });
-
-        // Prevent default drag behaviors on document
-        document.addEventListener('dragover', (e) => e.preventDefault());
-        document.addEventListener('drop', (e) => e.preventDefault());
+            // File input change
+            this.elements.fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    this.handleFileSelection(e.target.files);
+                }
+                e.target.value = ''; // Reset input for same file selection
+            });
+        }
     }
 
     handleFileSelection(files) {

@@ -860,46 +860,9 @@ body {
     transform: scale(1.1);
 }
 
-/* Drag & Drop Overlay */
+/* Drag & Drop Overlay - Hidden */
 .drag-drop-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(124, 58, 237, 0.9);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    border-radius: var(--radius-lg);
-    margin: 20px;
-    border: 3px dashed white;
-}
-
-.drag-drop-overlay.active {
-    display: flex;
-}
-
-.drag-drop-content {
-    text-align: center;
-    color: white;
-}
-
-.drag-drop-content svg {
-    margin-bottom: 16px;
-    opacity: 0.9;
-}
-
-.drag-drop-content p {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.drag-drop-content span {
-    font-size: 0.875rem;
-    opacity: 0.8;
+    display: none !important;
 }
 
 /* Message with Image Attachment */
