@@ -167,10 +167,10 @@ class ChatApp {
         console.log('handleFileSelection called with files:', files);
         
         const allowedTypes = [
-            'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+            'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml',
             'application/pdf', 'text/plain', 'text/markdown', 'text/md'
         ];
-        const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.txt', '.md'];
+        const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.pdf', '.txt', '.md'];
         const maxSize = 10 * 1024 * 1024; // 10MB
 
         for (const file of files) {
