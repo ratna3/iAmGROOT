@@ -164,46 +164,74 @@ class ChatApp {
     }
 
     handleFileSelection(files) {
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 
-                             'application/pdf', 'text/plain', 'text/markdown'];
+        console.log('handleFileSelection called with files:', files);
+        
+        const allowedTypes = [
+            'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
+            'application/pdf', 'text/plain', 'text/markdown', 'text/md'
+        ];
+        const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.txt', '.md'];
         const maxSize = 10 * 1024 * 1024; // 10MB
 
         for (const file of files) {
-            // Check file type
-            if (!allowedTypes.some(type => file.type.includes(type.split('/')[1]) || file.type === type)) {
+            console.log('Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
+            
+            // Check file type by MIME type or extension
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            const isAllowedType = allowedTypes.includes(file.type) || 
+                                  allowedExtensions.includes(fileExtension) ||
+                                  file.type.startsWith('image/');
+            
+            if (!isAllowedType) {
+                console.log('File type not allowed:', file.type, fileExtension);
                 this.showToast(`File type not supported: ${file.name}`, 'error');
                 continue;
             }
 
             // Check file size
             if (file.size > maxSize) {
+                console.log('File too large:', file.size);
                 this.showToast(`File too large: ${file.name} (max 10MB)`, 'error');
                 continue;
             }
 
             // Add to pending files
+            console.log('Adding file to pendingFiles:', file.name);
             this.pendingFiles.push({
                 file: file,
-                type: file.type,
+                type: file.type || 'application/octet-stream',
                 name: file.name,
                 preview: null
             });
         }
 
+        console.log('Pending files after selection:', this.pendingFiles);
         this.updateFilePreview();
     }
 
     updateFilePreview() {
-        this.elements.filePreviewContainer.innerHTML = '';
+        console.log('updateFilePreview called, pendingFiles:', this.pendingFiles);
+        
+        const container = this.elements.filePreviewContainer || document.getElementById('filePreviewContainer');
+        const attachBtn = this.elements.attachBtn || document.getElementById('attachBtn');
+        
+        if (!container) {
+            console.error('File preview container not found!');
+            return;
+        }
+        
+        container.innerHTML = '';
         
         if (this.pendingFiles.length === 0) {
-            this.elements.filePreviewContainer.classList.remove('has-files');
-            this.elements.attachBtn.classList.remove('has-files');
+            container.classList.remove('has-files');
+            if (attachBtn) attachBtn.classList.remove('has-files');
             return;
         }
 
-        this.elements.filePreviewContainer.classList.add('has-files');
-        this.elements.attachBtn.classList.add('has-files');
+        container.classList.add('has-files');
+        if (attachBtn) attachBtn.classList.add('has-files');
+        
+        console.log('Building file previews for', this.pendingFiles.length, 'files');
 
         this.pendingFiles.forEach((fileData, index) => {
             const previewItem = document.createElement('div');
@@ -241,7 +269,8 @@ class ChatApp {
             removeBtn.onclick = () => this.removeFile(index);
             previewItem.appendChild(removeBtn);
 
-            this.elements.filePreviewContainer.appendChild(previewItem);
+            container.appendChild(previewItem);
+            console.log('Added preview for file:', fileData.name);
         });
     }
 
