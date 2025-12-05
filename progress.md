@@ -68,6 +68,86 @@ Building an AI chatbot using Puter.js for unlimited, free Claude API calls with 
 - [x] Configure caching
 - [x] Prepare for production deployment
 
+### Phase 9: Vercel Migration & Real-time Features ✅
+
+- [x] Create vercel.json configuration
+- [x] **Real-time Conversation Sync**
+  - [x] Implement Supabase real-time subscriptions for conversations table
+  - [x] Auto-update conversation panel when new messages are sent
+  - [x] Add real-time listeners on `conversations` and `messages` tables
+  - [x] Display new conversations instantly without page refresh
+- [x] **File/Image Upload Integration**
+  - [x] Add file upload button to chat input area
+  - [x] Implement drag-and-drop file upload zone
+  - [x] Support image formats: PNG, JPG, JPEG, GIF, WebP
+  - [x] Support document formats: PDF, TXT, MD
+  - [x] Use Puter.js vision capabilities for image analysis
+  - [x] Convert images to base64 for Claude's vision API
+  - [x] Show image/file preview before sending
+  - [x] Display uploaded images in chat messages
+  - [ ] Support document formats: PDF, TXT, MD
+  - [ ] Use Puter.js vision capabilities for image analysis
+  - [ ] Convert images to base64 for Claude's vision API
+  - [ ] Show image/file preview before sending
+  - [ ] Display uploaded images in chat messages
+  - [ ] Store file references in messages table (optional: use Supabase Storage)
+
+---
+
+## 🔧 Phase 9 Implementation Details
+
+### Real-time Conversation Panel Updates
+
+**Approach:** Use Supabase Realtime to subscribe to database changes
+
+```javascript
+// Subscribe to conversation changes
+supabase
+  .channel('conversations')
+  .on('postgres_changes', 
+    { event: '*', schema: 'public', table: 'conversations' },
+    (payload) => {
+      // Update sidebar instantly when conversations change
+      refreshConversationList();
+    }
+  )
+  .subscribe();
+```
+
+**Files to modify:**
+- `js/supabase.js` - Add real-time subscription functions
+- `js/app.js` - Handle real-time events and update UI
+
+### File/Image Upload Feature
+
+**Approach:** Use HTML5 File API + Puter.js Vision API
+
+```javascript
+// Example: Send image to Claude with vision
+const response = await puter.ai.chat({
+  model: 'claude-sonnet-4-5',
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', data: base64Image } },
+      { type: 'text', text: userPrompt }
+    ]
+  }]
+});
+```
+
+**UI Changes:**
+- Add 📎 attachment button next to send button
+- Add drag-drop overlay on chat area
+- Show thumbnail previews of selected files
+- Display images inline in message bubbles
+
+**Files to modify:**
+- `index.html` - Add file input and preview container
+- `css/styles.css` - Style upload button, preview, drag-drop zone
+- `js/puter-chat.js` - Handle multimodal messages with images
+- `js/app.js` - File selection, preview, and upload logic
+
 ---
 
 ## 🗃️ Database Schema Design
@@ -112,9 +192,9 @@ Building an AI chatbot using Puter.js for unlimited, free Claude API calls with 
 
 ## 🚀 Current Status
 
-**Phase:** 8 - Deployment  
+**Phase:** 9 - Vercel Migration & Real-time Features  
 **Status:** Complete ✅  
-**Last Updated:** January 2025
+**Last Updated:** December 2025
 
 ---
 

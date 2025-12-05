@@ -303,6 +303,112 @@ class SupabaseService {
         
         return title;
     }
+
+    // ============ Real-time Subscriptions ============
+
+    // Subscribe to conversation changes
+    subscribeToConversations(userId, onInsert, onUpdate, onDelete) {
+        if (!this.client) return null;
+
+        const channel = this.client
+            .channel('conversations-realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${userId}`
+                },
+                (payload) => {
+                    console.log('New conversation:', payload.new);
+                    if (onInsert) onInsert(payload.new);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${userId}`
+                },
+                (payload) => {
+                    console.log('Conversation updated:', payload.new);
+                    if (onUpdate) onUpdate(payload.new);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'conversations'
+                },
+                (payload) => {
+                    console.log('Conversation deleted:', payload.old);
+                    if (onDelete) onDelete(payload.old);
+                }
+            )
+            .subscribe((status) => {
+                console.log('Conversations subscription status:', status);
+            });
+
+        return channel;
+    }
+
+    // Subscribe to messages for a specific conversation
+    subscribeToMessages(conversationId, onInsert, onDelete) {
+        if (!this.client) return null;
+
+        const channel = this.client
+            .channel(`messages-${conversationId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `conversation_id=eq.${conversationId}`
+                },
+                (payload) => {
+                    console.log('New message:', payload.new);
+                    if (onInsert) onInsert(payload.new);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `conversation_id=eq.${conversationId}`
+                },
+                (payload) => {
+                    console.log('Message deleted:', payload.old);
+                    if (onDelete) onDelete(payload.old);
+                }
+            )
+            .subscribe((status) => {
+                console.log(`Messages subscription status for ${conversationId}:`, status);
+            });
+
+        return channel;
+    }
+
+    // Unsubscribe from a channel
+    unsubscribe(channel) {
+        if (this.client && channel) {
+            this.client.removeChannel(channel);
+        }
+    }
+
+    // Unsubscribe from all channels
+    unsubscribeAll() {
+        if (this.client) {
+            this.client.removeAllChannels();
+        }
+    }
 }
 
 // Create global instance

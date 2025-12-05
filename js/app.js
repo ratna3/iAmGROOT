@@ -8,6 +8,9 @@ class ChatApp {
         this.conversations = [];
         this.messages = [];
         this.isLoading = false;
+        this.pendingFiles = []; // Store files to be sent
+        this.conversationsChannel = null; // Real-time subscription
+        this.messagesChannel = null; // Real-time subscription
         
         // DOM Elements
         this.elements = {};
@@ -23,6 +26,9 @@ class ChatApp {
         // Set up event listeners
         this.setupEventListeners();
         
+        // Set up file handling
+        this.setupFileHandling();
+        
         // Initialize theme
         this.initTheme();
         
@@ -31,6 +37,9 @@ class ChatApp {
         
         // Load conversations
         await this.loadConversations();
+        
+        // Setup real-time subscriptions
+        this.setupRealtimeSubscriptions();
         
         console.log('Chat app initialized');
     }
@@ -52,6 +61,12 @@ class ChatApp {
             chatForm: document.getElementById('chatForm'),
             messageInput: document.getElementById('messageInput'),
             sendBtn: document.getElementById('sendBtn'),
+            
+            // File handling
+            attachBtn: document.getElementById('attachBtn'),
+            fileInput: document.getElementById('fileInput'),
+            filePreviewContainer: document.getElementById('filePreviewContainer'),
+            dragDropOverlay: document.getElementById('dragDropOverlay'),
             
             // Mobile
             menuToggle: document.getElementById('menuToggle'),
@@ -117,6 +132,206 @@ class ChatApp {
                 }
             }
         });
+    }
+
+    // ============ File Handling Setup ============
+
+    setupFileHandling() {
+        // Attachment button click
+        this.elements.attachBtn.addEventListener('click', () => {
+            this.elements.fileInput.click();
+        });
+
+        // File input change
+        this.elements.fileInput.addEventListener('change', (e) => {
+            this.handleFileSelection(e.target.files);
+            e.target.value = ''; // Reset input
+        });
+
+        // Drag and drop
+        const chatMain = document.querySelector('.chat-main');
+        
+        chatMain.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            this.elements.dragDropOverlay.classList.add('active');
+        });
+
+        chatMain.addEventListener('dragleave', (e) => {
+            if (!chatMain.contains(e.relatedTarget)) {
+                this.elements.dragDropOverlay.classList.remove('active');
+            }
+        });
+
+        chatMain.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.elements.dragDropOverlay.classList.remove('active');
+            this.handleFileSelection(e.dataTransfer.files);
+        });
+
+        // Prevent default drag behaviors on document
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', (e) => e.preventDefault());
+    }
+
+    handleFileSelection(files) {
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 
+                             'application/pdf', 'text/plain', 'text/markdown'];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+
+        for (const file of files) {
+            // Check file type
+            if (!allowedTypes.some(type => file.type.includes(type.split('/')[1]) || file.type === type)) {
+                this.showToast(`File type not supported: ${file.name}`, 'error');
+                continue;
+            }
+
+            // Check file size
+            if (file.size > maxSize) {
+                this.showToast(`File too large: ${file.name} (max 10MB)`, 'error');
+                continue;
+            }
+
+            // Add to pending files
+            this.pendingFiles.push({
+                file: file,
+                type: file.type,
+                name: file.name,
+                preview: null
+            });
+        }
+
+        this.updateFilePreview();
+    }
+
+    updateFilePreview() {
+        this.elements.filePreviewContainer.innerHTML = '';
+        
+        if (this.pendingFiles.length === 0) {
+            this.elements.filePreviewContainer.classList.remove('has-files');
+            this.elements.attachBtn.classList.remove('has-files');
+            return;
+        }
+
+        this.elements.filePreviewContainer.classList.add('has-files');
+        this.elements.attachBtn.classList.add('has-files');
+
+        this.pendingFiles.forEach((fileData, index) => {
+            const previewItem = document.createElement('div');
+            previewItem.className = 'file-preview-item';
+
+            if (fileData.type.startsWith('image/')) {
+                // Create image preview
+                const img = document.createElement('img');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                    fileData.preview = e.target.result;
+                };
+                reader.readAsDataURL(fileData.file);
+                previewItem.appendChild(img);
+            } else {
+                // Create file icon
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'file-icon';
+                iconDiv.textContent = fileData.type.includes('pdf') ? '📄' : '📝';
+                previewItem.appendChild(iconDiv);
+            }
+
+            // File name
+            const fileName = document.createElement('span');
+            fileName.className = 'file-name';
+            fileName.textContent = fileData.name;
+            fileName.title = fileData.name;
+            previewItem.appendChild(fileName);
+
+            // Remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-file';
+            removeBtn.innerHTML = '×';
+            removeBtn.onclick = () => this.removeFile(index);
+            previewItem.appendChild(removeBtn);
+
+            this.elements.filePreviewContainer.appendChild(previewItem);
+        });
+    }
+
+    removeFile(index) {
+        this.pendingFiles.splice(index, 1);
+        this.updateFilePreview();
+    }
+
+    clearPendingFiles() {
+        this.pendingFiles = [];
+        this.updateFilePreview();
+    }
+
+    // ============ Real-time Subscriptions ============
+
+    setupRealtimeSubscriptions() {
+        const user = supabaseService.getCurrentUser();
+        if (!user || !supabaseService.isAvailable()) {
+            console.log('Real-time subscriptions not available (no user or Supabase)');
+            return;
+        }
+
+        // Subscribe to conversation changes
+        this.conversationsChannel = supabaseService.subscribeToConversations(
+            user.id,
+            // On insert
+            (newConv) => {
+                // Check if conversation already exists (we might have added it locally)
+                if (!this.conversations.find(c => c.id === newConv.id)) {
+                    this.conversations.unshift(newConv);
+                    this.renderConversationList();
+                }
+            },
+            // On update
+            (updatedConv) => {
+                const index = this.conversations.findIndex(c => c.id === updatedConv.id);
+                if (index !== -1) {
+                    this.conversations[index] = updatedConv;
+                    this.renderConversationList();
+                    // Update title if current conversation
+                    if (this.currentConversation?.id === updatedConv.id) {
+                        this.updateChatTitle(updatedConv.title);
+                    }
+                }
+            },
+            // On delete
+            (deletedConv) => {
+                this.conversations = this.conversations.filter(c => c.id !== deletedConv.id);
+                this.renderConversationList();
+            }
+        );
+
+        console.log('Real-time subscriptions initialized');
+    }
+
+    subscribeToCurrentConversationMessages() {
+        if (!this.currentConversation || !supabaseService.isAvailable()) return;
+
+        // Unsubscribe from previous conversation
+        if (this.messagesChannel) {
+            supabaseService.unsubscribe(this.messagesChannel);
+        }
+
+        // Subscribe to new conversation messages
+        this.messagesChannel = supabaseService.subscribeToMessages(
+            this.currentConversation.id,
+            // On insert - only handle if from another source (not our own send)
+            (newMsg) => {
+                // Check if message already exists locally
+                if (!this.messages.find(m => m.id === newMsg.id)) {
+                    this.messages.push(newMsg);
+                    this.addMessageToUI(newMsg.role, newMsg.content, newMsg.created_at);
+                }
+            },
+            // On delete
+            (deletedMsg) => {
+                this.messages = this.messages.filter(m => m.id !== deletedMsg.id);
+                this.renderMessages();
+            }
+        );
     }
 
     async initServices() {
@@ -269,6 +484,9 @@ class ChatApp {
             // Load messages
             this.messages = await supabaseService.getMessages(conversationId);
             
+            // Subscribe to real-time message updates for this conversation
+            this.subscribeToCurrentConversationMessages();
+            
             // Update Puter chat history
             puterChat.clearHistory();
             puterChat.loadHistory(this.messages);
@@ -332,33 +550,39 @@ class ChatApp {
         e.preventDefault();
         
         const message = this.elements.messageInput.value.trim();
-        if (!message || puterChat.isCurrentlyGenerating()) return;
+        const hasAttachments = this.pendingFiles.length > 0;
+        
+        if ((!message && !hasAttachments) || puterChat.isCurrentlyGenerating()) return;
         
         // Create conversation if none exists
         if (!this.currentConversation) {
             await this.createNewConversation();
         }
         
-        // Clear input
+        // Store attachments before clearing
+        const attachments = [...this.pendingFiles];
+        
+        // Clear input and files
         this.elements.messageInput.value = '';
         this.autoResizeInput();
+        this.clearPendingFiles();
         
         // Hide welcome screen
         this.hideWelcomeScreen();
         
-        // Add user message to UI
-        this.addMessageToUI('user', message);
+        // Add user message to UI (with attachments preview)
+        this.addMessageToUI('user', message, null, attachments);
         
-        // Save user message
+        // Save user message (text only for now)
         await supabaseService.saveMessage(
             this.currentConversation.id,
             'user',
-            message
+            message + (hasAttachments ? ` [${attachments.length} file(s) attached]` : '')
         );
         
         // Update conversation title on first message
         if (this.messages.length === 0) {
-            const title = supabaseService.generateTitleFromMessage(message);
+            const title = supabaseService.generateTitleFromMessage(message || 'Image analysis');
             await supabaseService.updateConversationTitle(this.currentConversation.id, title);
             this.currentConversation.title = title;
             this.updateChatTitle(title);
@@ -374,12 +598,12 @@ class ChatApp {
         // Add typing indicator
         const typingElement = this.addTypingIndicator();
         
-        // Get AI response with streaming
+        // Get AI response with streaming (include attachments)
         const model = this.elements.modelSelect.value;
         const responseElement = this.createAssistantMessage();
         
         await puterChat.sendMessageStreaming(
-            message,
+            message || 'What do you see in this image?',
             // On chunk
             (chunk, fullText) => {
                 // Remove typing indicator on first chunk
@@ -413,7 +637,8 @@ class ChatApp {
                 responseElement.remove();
                 this.showToast('Failed to get response: ' + error.message, 'error');
                 this.elements.sendBtn.disabled = false;
-            }
+            },
+            attachments // Pass attachments to puter chat
         );
     }
 
@@ -436,13 +661,44 @@ class ChatApp {
         this.scrollToBottom();
     }
 
-    addMessageToUI(role, content, timestamp = null) {
+    addMessageToUI(role, content, timestamp = null, attachments = []) {
         const messageEl = document.createElement('div');
         messageEl.className = `message ${role}`;
         
         const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
         const avatar = role === 'user' ? '👤' : '🤖';
         const author = role === 'user' ? 'You' : 'AI Assistant';
+        
+        // Build attachments HTML
+        let attachmentsHtml = '';
+        if (attachments.length > 0) {
+            attachmentsHtml = '<div class="message-attachments">';
+            attachments.forEach(att => {
+                if (att.type.startsWith('image/') && att.preview) {
+                    attachmentsHtml += `<img src="${att.preview}" alt="${att.name}" class="message-attachment-img">`;
+                } else if (att.type.startsWith('image/')) {
+                    // Create preview on the fly
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = messageEl.querySelector('.message-attachment-img[data-name="' + att.name + '"]');
+                        if (img) img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(att.file);
+                    attachmentsHtml += `<img src="" alt="${att.name}" class="message-attachment-img" data-name="${att.name}">`;
+                } else {
+                    attachmentsHtml += `
+                        <div class="message-attachment-file">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            ${att.name}
+                        </div>
+                    `;
+                }
+            });
+            attachmentsHtml += '</div>';
+        }
         
         messageEl.innerHTML = `
             <div class="message-avatar">${avatar}</div>
@@ -451,6 +707,7 @@ class ChatApp {
                     <span class="message-author">${author}</span>
                     <span class="message-time">${time}</span>
                 </div>
+                ${attachmentsHtml}
                 <div class="message-text">${this.escapeHtml(content)}</div>
                 <div class="message-actions">
                     <button class="message-action-btn copy-btn" title="Copy">

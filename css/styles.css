@@ -748,6 +748,197 @@ body {
     margin-top: 8px;
 }
 
+/* ===== File Upload Styles ===== */
+
+/* Attachment Button */
+.attach-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.attach-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.attach-btn.has-files {
+    background-color: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+/* File Preview Container */
+.file-preview-container {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.file-preview-container.has-files {
+    display: flex;
+}
+
+.file-preview-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    max-width: 120px;
+}
+
+.file-preview-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+}
+
+.file-preview-item .file-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 2rem;
+}
+
+.file-preview-item .file-name {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.file-preview-item .remove-file {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--error-color);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    transition: transform var(--transition-fast);
+}
+
+.file-preview-item .remove-file:hover {
+    transform: scale(1.1);
+}
+
+/* Drag & Drop Overlay */
+.drag-drop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(124, 58, 237, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: var(--radius-lg);
+    margin: 20px;
+    border: 3px dashed white;
+}
+
+.drag-drop-overlay.active {
+    display: flex;
+}
+
+.drag-drop-content {
+    text-align: center;
+    color: white;
+}
+
+.drag-drop-content svg {
+    margin-bottom: 16px;
+    opacity: 0.9;
+}
+
+.drag-drop-content p {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.drag-drop-content span {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+/* Message with Image Attachment */
+.message-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.message-attachment-img {
+    max-width: 300px;
+    max-height: 200px;
+    border-radius: var(--radius-md);
+    object-fit: contain;
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+.message-attachment-img:hover {
+    transform: scale(1.02);
+}
+
+.message-attachment-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.message-attachment-file svg {
+    flex-shrink: 0;
+}
+
 /* ===== Loading Overlay ===== */
 .loading-overlay {
     position: fixed;
