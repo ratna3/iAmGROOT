@@ -138,27 +138,65 @@ class ChatApp {
 
     setupFileHandling() {
         const attachBtn = document.getElementById('attachBtn');
-        const fileInput = document.getElementById('fileInput');
+        let fileInput = document.getElementById('fileInput');
         
         console.log('Setting up file handling:', { attachBtn, fileInput });
         
+        // If file input doesn't exist, create it dynamically
         if (!fileInput) {
-            console.error('File input element not found!');
-            return;
+            console.log('Creating file input dynamically');
+            fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.id = 'fileInput';
+            fileInput.multiple = true;
+            fileInput.accept = 'image/*,.pdf,.txt,.md';
+            fileInput.style.cssText = 'position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;';
+            document.body.appendChild(fileInput);
         }
 
         // Store references
         this.elements.attachBtn = attachBtn;
         this.elements.fileInput = fileInput;
 
-        // File input change handler
-        fileInput.addEventListener('change', (e) => {
-            console.log('File input changed:', e.target.files);
+        // Attach button click handler - trigger file input
+        if (attachBtn) {
+            attachBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Attach button clicked, triggering file input');
+                fileInput.click();
+            });
+        }
+
+        // File input change handler - use both inline and addEventListener
+        const handleChange = (e) => {
+            console.log('=== FILE INPUT CHANGE EVENT ===');
+            console.log('Event target:', e.target);
+            console.log('Files object:', e.target.files);
+            console.log('Number of files:', e.target.files ? e.target.files.length : 0);
+            
             if (e.target.files && e.target.files.length > 0) {
+                console.log('Processing files...');
+                for (let i = 0; i < e.target.files.length; i++) {
+                    console.log(`File ${i}:`, e.target.files[i].name, e.target.files[i].type, e.target.files[i].size);
+                }
                 this.handleFileSelection(e.target.files);
+            } else {
+                console.log('No files in selection');
             }
-            e.target.value = ''; // Reset input for same file selection
-        });
+            // Reset input for same file selection after a short delay
+            setTimeout(() => {
+                e.target.value = '';
+                console.log('File input reset');
+            }, 100);
+        };
+
+        // Remove any existing listeners and add new one
+        fileInput.onchange = null;
+        fileInput.addEventListener('change', handleChange.bind(this));
+        
+        // Also set onchange as backup
+        fileInput.onchange = handleChange.bind(this);
         
         console.log('File handling setup complete');
     }
