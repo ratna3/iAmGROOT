@@ -11,12 +11,25 @@ class PuterChat {
         this.pendingAttachments = []; // Store pending file attachments
     }
 
+    // Wait for Puter.js to be available
+    async waitForPuter(maxAttempts = 50, interval = 100) {
+        for (let i = 0; i < maxAttempts; i++) {
+            if (typeof puter !== 'undefined') {
+                return true;
+            }
+            await new Promise(resolve => setTimeout(resolve, interval));
+        }
+        return false;
+    }
+
     // Initialize Puter.js
     async init() {
         try {
-            // Check if Puter.js is loaded
-            if (typeof puter === 'undefined') {
-                throw new Error('Puter.js not loaded. Please include the Puter.js script.');
+            // Wait for Puter.js to load (up to 5 seconds)
+            const puterLoaded = await this.waitForPuter();
+            
+            if (!puterLoaded) {
+                throw new Error('Puter.js not loaded. Please check your internet connection.');
             }
             
             this.isReady = true;
