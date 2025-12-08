@@ -9,11 +9,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Made with Puter.js](https://img.shields.io/badge/Made%20with-Puter.js-7c3aed)](https://github.com/heyPuter/puter/)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E)](https://supabase.com)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/placeholder/deploy-status)](https://wearegroots.netlify.app)
+[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black)](https://i-am-groot-eight.vercel.app)
 
 **A free, unlimited AI chatbot with Claude API access - no API keys required!**
 
-[🚀 Live Demo](https://wearegroots.netlify.app) • [📖 Documentation](#-documentation) • [🤝 Contributing](#-contributing)
+[🚀 Live Demo](https://i-am-groot-eight.vercel.app) • [📖 Documentation](#-documentation) • [🤝 Contributing](#-contributing)
 
 </div>
 
@@ -60,7 +60,7 @@
 
 ## 🎬 Demo
 
-Visit the live demo: **[wearegroots.netlify.app](https://wearegroots.netlify.app)**
+Visit the live demo: **[i-am-groot-eight.vercel.app](https://i-am-groot-eight.vercel.app)**
 
 ### Features Showcase
 
@@ -134,7 +134,7 @@ iAmGROOT/
 │   └── 📱 app.js            # Main application logic
 ├── 📁 migrations/
 │   └── 📊 *.sql             # Supabase migration files
-├── 📄 netlify.toml          # Netlify deployment config
+├── 📄 vercel.json           # Vercel deployment config
 ├── 📄 progress.md           # Project progress tracker
 ├── 📄 LICENSE               # MIT License
 ├── 📄 SECURITY.md           # Security policy
@@ -350,8 +350,8 @@ await supabaseService.deleteConversation(conversationId);
 
 - ✅ Row Level Security (RLS) enabled on all Supabase tables
 - ✅ No sensitive data stored in client-side code
-- ✅ HTTPS enforced via Netlify
-- ✅ Security headers configured in `netlify.toml`
+- ✅ HTTPS enforced via Vercel
+- ✅ Security headers configured in `vercel.json`
 - ✅ Input validation and sanitization
 
 ### Reporting Vulnerabilities
@@ -453,7 +453,7 @@ copies or substantial portions of the Software.
 |------------|---------|------|
 | **Supabase** | Database & Authentication | [supabase.com](https://supabase.com) |
 | **Three.js** | 3D Graphics | [threejs.org](https://threejs.org) |
-| **Netlify** | Hosting & Deployment | [netlify.com](https://netlify.com) |
+| **Vercel** | Hosting & Deployment | [vercel.com](https://vercel.com) |
 
 ---
 

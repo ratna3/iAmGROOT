@@ -44,7 +44,7 @@ When using or contributing to this project, please follow these guidelines:
 
 ### Frontend Security
 
-- Content Security Policy (CSP) headers via Netlify
+- Content Security Policy (CSP) headers via Vercel
 - XSS protection through proper DOM manipulation
 - No inline JavaScript execution
 - Secure external resource loading
