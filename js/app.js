@@ -73,6 +73,7 @@ class ChatApp {
     showApp() {
         this.elements.loginScreen.classList.remove('active');
         this.elements.appContainer.style.display = 'flex';
+        this.elements.loadingOverlay.classList.remove('active');
     }
 
     // Update user info in sidebar
