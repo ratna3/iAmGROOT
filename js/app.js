@@ -21,29 +21,36 @@ class ChatApp {
     }
 
     async init() {
+        console.log('[App] Starting initialization...');
+        
         // Cache DOM elements
         this.cacheElements();
+        console.log('[App] DOM elements cached');
         
         // Set up event listeners
         this.setupEventListeners();
+        console.log('[App] Event listeners set up');
         
         // Set up file handling
         this.setupFileHandling();
         
         // Initialize theme
         this.initTheme();
+        console.log('[App] Theme initialized');
         
         // Setup auth state listener FIRST (before Supabase init)
         // This ensures we catch auth events during initialization
         this.setupAuthListener();
+        console.log('[App] Auth listener set up');
         
         // Initialize services (Supabase will fire auth events here)
         await this.initServices();
         
         // Check authentication state (fallback for missed events)
+        console.log('[App] Checking auth state...');
         await this.checkAuthState();
         
-        console.log('Chat app initialized');
+        console.log('[App] Chat app fully initialized');
     }
 
     // Setup authentication state listener
@@ -74,15 +81,19 @@ class ChatApp {
 
     // Check current authentication state
     async checkAuthState() {
+        console.log('[App] checkAuthState() called');
         const session = await supabaseService.getSession();
+        console.log('[App] Session from getSession():', session ? 'Found' : 'Not found');
         
         if (session) {
+            console.log('[App] User authenticated:', session.user.email);
             this.isAuthenticated = true;
             this.showApp();
             await this.loadConversations();
             this.setupRealtimeSubscriptions();
             this.updateUserInfo(session.user);
         } else {
+            console.log('[App] No session, showing login screen');
             this.isAuthenticated = false;
             this.showLoginScreen();
         }
@@ -518,26 +529,34 @@ class ChatApp {
     }
 
     async initServices() {
+        console.log('[App] initServices() started');
         this.showLoading();
         
         try {
             // Initialize Puter.js
+            console.log('[App] Initializing Puter.js...');
             const puterReady = await puterChat.init();
+            console.log('[App] Puter.js ready:', puterReady);
             if (!puterReady) {
                 this.showToast('Failed to initialize AI service', 'error');
             }
             
             // Initialize Supabase
+            console.log('[App] Initializing Supabase...');
             const supabaseReady = await supabaseService.init();
+            console.log('[App] Supabase ready:', supabaseReady);
             if (!supabaseReady) {
                 this.showToast('Running in offline mode - chats won\'t be saved', 'warning');
             }
+            
+            console.log('[App] All services initialized');
         } catch (error) {
-            console.error('Service initialization error:', error);
+            console.error('[App] Service initialization error:', error);
             this.showToast('Error initializing services', 'error');
         }
         
         this.hideLoading();
+        console.log('[App] initServices() complete');
     }
 
     // ============ Theme Management ============

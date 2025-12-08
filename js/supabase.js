@@ -13,16 +13,23 @@ class SupabaseService {
 
     // Initialize Supabase client
     async init() {
-        if (this.initialized) return;
+        console.log('[Supabase] init() called, initialized:', this.initialized);
+        
+        if (this.initialized) {
+            console.log('[Supabase] Already initialized, returning true');
+            return true;
+        }
         
         try {
             // Check if Supabase is configured
             if (CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL' || 
                 CONFIG.SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
-                console.warn('Supabase not configured. Running in local-only mode.');
+                console.warn('[Supabase] Not configured. Running in local-only mode.');
                 this.initialized = true;
                 return false;
             }
+            
+            console.log('[Supabase] Creating client with URL:', CONFIG.SUPABASE_URL);
             
             // Initialize Supabase client with auth options for OAuth
             this.client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
@@ -34,21 +41,33 @@ class SupabaseService {
                 }
             });
             
+            console.log('[Supabase] Client created successfully');
+            
             // Setup auth state listener
             this.setupAuthListener();
+            console.log('[Supabase] Auth listener set up');
             
             // Check for existing session
-            const { data: { session } } = await this.client.auth.getSession();
+            console.log('[Supabase] Checking for existing session...');
+            const { data: { session }, error: sessionError } = await this.client.auth.getSession();
+            
+            if (sessionError) {
+                console.error('[Supabase] Error getting session:', sessionError);
+            }
+            
+            console.log('[Supabase] Session check complete:', session ? 'Session found' : 'No session');
+            
             if (session) {
                 this.authUser = session.user;
+                console.log('[Supabase] User from session:', session.user.email);
                 await this.getOrCreateUser();
             }
             
             this.initialized = true;
-            console.log('Supabase initialized successfully');
+            console.log('[Supabase] Initialization complete!');
             return true;
         } catch (error) {
-            console.error('Failed to initialize Supabase:', error);
+            console.error('[Supabase] Failed to initialize:', error);
             this.initialized = true;
             return false;
         }
