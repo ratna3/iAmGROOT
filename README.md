@@ -9,12 +9,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Made with Puter.js](https://img.shields.io/badge/Made%20with-Puter.js-7c3aed)](https://github.com/heyPuter/puter/)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E)](https://supabase.com)
-[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black)](https://i-am-groot-eight.vercel.app)
+[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black)](https://i-am-groot-lp4qnoxbv-ratna-kirtis-projects.vercel.app/)
 [![Three.js](https://img.shields.io/badge/3D%20Graphics-Three.js-000000)](https://threejs.org)
 
 **A free, unlimited AI chatbot with Claude API access - no API keys required!**
 
-[🚀 Live Demo](https://i-am-groot-eight.vercel.app) • [📖 Documentation](#-documentation) • [🤝 Contributing](#-contributing)
+[🚀 Live Demo](https://i-am-groot-lp4qnoxbv-ratna-kirtis-projects.vercel.app/) • [📖 Documentation](#-documentation) • [🤝 Contributing](#-contributing)
 
 </div>
 
@@ -135,7 +135,7 @@ Our ultra-enhanced web search system surpasses traditional AI web search capabil
 
 ## 🎬 Demo
 
-Visit the live demo: **[i-am-groot-eight.vercel.app](https://i-am-groot-eight.vercel.app)**
+Visit the live demo: **[i-am-groot-lp4qnoxbv-ratna-kirtis-projects.vercel.app](https://i-am-groot-lp4qnoxbv-ratna-kirtis-projects.vercel.app/)**
 
 ### Features Showcase
 
