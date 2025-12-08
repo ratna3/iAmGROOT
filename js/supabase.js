@@ -98,37 +98,6 @@ class SupabaseService {
     setupAuthListener() {
         // Disabled - no login required
     }
-        if (!this.client) return;
-        
-        this.client.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
-            
-            // Store the last event and session for late subscribers
-            this.lastAuthEvent = event;
-            this.lastSession = session;
-            
-            if (event === 'SIGNED_IN' && session) {
-                console.log('User signed in:', session.user.email);
-                this.authUser = session.user;
-                await this.getOrCreateUser();
-            } else if (event === 'SIGNED_OUT') {
-                console.log('User signed out');
-                this.authUser = null;
-                this.currentUser = null;
-            } else if (event === 'TOKEN_REFRESHED') {
-                console.log('Token refreshed');
-            } else if (event === 'INITIAL_SESSION') {
-                console.log('Initial session detected:', session ? session.user.email : 'No session');
-                if (session) {
-                    this.authUser = session.user;
-                    await this.getOrCreateUser();
-                }
-            }
-            
-            // Notify all callbacks
-            this.authStateCallbacks.forEach(callback => callback(event, session));
-        });
-    }
 
     // Register auth state change callback
     // If the auth state has already been set, immediately notify the new callback

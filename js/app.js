@@ -11,7 +11,7 @@ class ChatApp {
         this.pendingFiles = []; // Store files to be sent
         this.conversationsChannel = null; // Real-time subscription
         this.messagesChannel = null; // Real-time subscription
-        this.isAuthenticated = false;
+        this.isAuthenticated = true; // No login required - always authenticated
         
         // DOM Elements
         this.elements = {};
@@ -807,8 +807,9 @@ class ChatApp {
                 // Add to local messages
                 this.messages.push({ role: 'assistant', content: fullResponse });
                 
-                // Re-enable send button
+                // Re-enable send button and regenerate button
                 this.elements.sendBtn.disabled = false;
+                this.elements.regenerateBtn.disabled = false;
                 this.elements.messageInput.focus();
             },
             // On error
