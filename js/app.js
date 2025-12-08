@@ -104,7 +104,20 @@ class ChatApp {
             await supabaseService.signInWithGoogle();
         } catch (error) {
             console.error('Sign in failed:', error);
-            this.showToast('Sign in failed. Please try again.', 'error');
+            // Provide more specific error messages
+            let errorMessage = 'Sign in failed. ';
+            if (error.message) {
+                if (error.message.includes('provider')) {
+                    errorMessage += 'Google provider not configured in Supabase.';
+                } else if (error.message.includes('redirect')) {
+                    errorMessage += 'Redirect URL not configured properly.';
+                } else {
+                    errorMessage += error.message;
+                }
+            } else {
+                errorMessage += 'Please check console for details.';
+            }
+            this.showToast(errorMessage, 'error');
             this.elements.loadingOverlay.classList.remove('active');
         }
     }
