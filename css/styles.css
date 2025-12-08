@@ -686,6 +686,13 @@ body {
     animation-delay: 0.4s;
 }
 
+.typing-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    font-style: italic;
+}
+
 @keyframes bounce {
     0%, 80%, 100% {
         transform: scale(0);
@@ -1159,6 +1166,85 @@ body {
     border: none;
     border-top: 1px solid var(--border-color);
     margin: 16px 0;
+}
+
+/* ===== Citations & Sources ===== */
+.citation-ref {
+    color: var(--accent-color);
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.citation-ref:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+.sources-citation {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.sources-header {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.sources-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.source-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.8rem;
+}
+
+.source-number {
+    color: var(--accent-color);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.source-link {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.source-link:hover {
+    text-decoration: none;
+}
+
+.source-link:hover .source-title {
+    text-decoration: underline;
+}
+
+.source-title {
+    color: var(--accent-color);
+    font-weight: 500;
+}
+
+.source-domain {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* Search indicator in typing */
+.typing-text {
+    transition: all var(--transition-fast);
 }
 
 /* ===== Login Screen ===== */

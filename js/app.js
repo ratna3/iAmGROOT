@@ -801,11 +801,11 @@ class ChatApp {
         // Add typing indicator
         const typingElement = this.addTypingIndicator();
         
-        // Get AI response with streaming (include attachments)
+        // Get AI response with streaming and web search (include attachments)
         const model = this.elements.modelSelect.value;
         const responseElement = this.createAssistantMessage();
         
-        await puterChat.sendMessageStreaming(
+        await puterChat.sendMessageWithSearch(
             message || 'What do you see in this image?',
             // On chunk
             (chunk, fullText) => {
@@ -813,12 +813,22 @@ class ChatApp {
                 if (typingElement.parentNode) {
                     typingElement.remove();
                 }
-                // Update response text
-                responseElement.querySelector('.message-text').textContent = fullText;
+                // Update response text with markdown rendering
+                const messageText = responseElement.querySelector('.message-text');
+                messageText.innerHTML = this.renderMarkdown(fullText);
                 this.scrollToBottom();
             },
             // On complete
-            async (fullResponse) => {
+            async (fullResponse, searchResults) => {
+                // Render final response with markdown
+                const messageText = responseElement.querySelector('.message-text');
+                messageText.innerHTML = this.renderMarkdown(fullResponse);
+                
+                // Add source citations if search was used
+                if (searchResults && searchResults.length > 0) {
+                    this.addSourcesCitation(responseElement, searchResults);
+                }
+                
                 // Save assistant message
                 await supabaseService.saveMessage(
                     this.currentConversation.id,
@@ -841,6 +851,18 @@ class ChatApp {
                 responseElement.remove();
                 this.showToast('Failed to get response: ' + error.message, 'error');
                 this.elements.sendBtn.disabled = false;
+            },
+            // On search start
+            () => {
+                typingElement.querySelector('.typing-text').textContent = 'Searching the web...';
+            },
+            // On search complete
+            (results) => {
+                if (results.length > 0) {
+                    typingElement.querySelector('.typing-text').textContent = `Found ${results.length} sources. Generating response...`;
+                } else {
+                    typingElement.querySelector('.typing-text').textContent = 'Generating response...';
+                }
             },
             attachments // Pass attachments to puter chat
         );
@@ -983,6 +1005,7 @@ class ChatApp {
                     <span></span>
                     <span></span>
                 </div>
+                <div class="typing-text">Thinking...</div>
             </div>
         `;
         this.elements.chatMessages.appendChild(typingEl);
@@ -1114,22 +1137,32 @@ class ChatApp {
         // Add typing indicator
         const typingElement = this.addTypingIndicator();
         
-        // Get new AI response with streaming
+        // Get new AI response with streaming and web search
         const model = this.elements.modelSelect.value;
         const responseElement = this.createAssistantMessage();
         
-        await puterChat.sendMessageStreaming(
+        await puterChat.sendMessageWithSearch(
             lastUserMessage.content,
             // On chunk
             (chunk, fullText) => {
                 if (typingElement.parentNode) {
                     typingElement.remove();
                 }
-                responseElement.querySelector('.message-text').textContent = fullText;
+                const messageText = responseElement.querySelector('.message-text');
+                messageText.innerHTML = this.renderMarkdown(fullText);
                 this.scrollToBottom();
             },
             // On complete
-            async (fullResponse) => {
+            async (fullResponse, searchResults) => {
+                // Render final response with markdown
+                const messageText = responseElement.querySelector('.message-text');
+                messageText.innerHTML = this.renderMarkdown(fullResponse);
+                
+                // Add source citations if search was used
+                if (searchResults && searchResults.length > 0) {
+                    this.addSourcesCitation(responseElement, searchResults);
+                }
+                
                 await supabaseService.saveMessage(
                     this.currentConversation.id,
                     'assistant',
@@ -1152,7 +1185,19 @@ class ChatApp {
                 this.elements.regenerateBtn.disabled = false;
                 this.elements.regenerateBtn.classList.remove('loading');
             },
-            model
+            // On search start
+            () => {
+                typingElement.querySelector('.typing-text').textContent = 'Searching the web...';
+            },
+            // On search complete
+            (results) => {
+                if (results.length > 0) {
+                    typingElement.querySelector('.typing-text').textContent = `Found ${results.length} sources. Generating response...`;
+                } else {
+                    typingElement.querySelector('.typing-text').textContent = 'Generating response...';
+                }
+            },
+            [] // No attachments for regenerate
         );
     }
 
@@ -1183,6 +1228,90 @@ class ChatApp {
     }
 
     // ============ Utility Functions ============
+
+    // Render markdown to HTML (basic implementation)
+    renderMarkdown(text) {
+        if (!text) return '';
+        
+        let html = this.escapeHtml(text);
+        
+        // Code blocks (```code```)
+        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
+        
+        // Inline code (`code`)
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Bold (**text** or __text__)
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+        
+        // Italic (*text* or _text_)
+        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+        
+        // Headers
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        
+        // Links [text](url)
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        
+        // Citation links [1], [2], etc.
+        html = html.replace(/\[(\d+)\]/g, '<sup class="citation-ref">[$1]</sup>');
+        
+        // Unordered lists
+        html = html.replace(/^\s*[-*]\s+(.+)$/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+        
+        // Ordered lists
+        html = html.replace(/^\s*\d+\.\s+(.+)$/gm, '<li>$1</li>');
+        
+        // Line breaks
+        html = html.replace(/\n\n/g, '</p><p>');
+        html = html.replace(/\n/g, '<br>');
+        
+        // Wrap in paragraph
+        html = '<p>' + html + '</p>';
+        
+        // Clean up empty paragraphs
+        html = html.replace(/<p><\/p>/g, '');
+        html = html.replace(/<p>(<h[1-6]>)/g, '$1');
+        html = html.replace(/(<\/h[1-6]>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<pre>)/g, '$1');
+        html = html.replace(/(<\/pre>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<ul>)/g, '$1');
+        html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+        
+        return html;
+    }
+
+    // Add sources citation block to a message
+    addSourcesCitation(messageElement, searchResults) {
+        if (!searchResults || searchResults.length === 0) return;
+        
+        const sourcesDiv = document.createElement('div');
+        sourcesDiv.className = 'sources-citation';
+        
+        let sourcesHtml = '<div class="sources-header">📚 Sources Used:</div>';
+        sourcesHtml += '<ul class="sources-list">';
+        
+        searchResults.forEach((result, index) => {
+            const displayUrl = result.url.length > 50 ? result.url.substring(0, 50) + '...' : result.url;
+            sourcesHtml += `<li class="source-item">
+                <span class="source-number">[${index + 1}]</span>
+                <a href="${result.url}" target="_blank" rel="noopener" class="source-link">
+                    <span class="source-title">${this.escapeHtml(result.title)}</span>
+                    <span class="source-domain">${this.escapeHtml(result.source)}</span>
+                </a>
+            </li>`;
+        });
+        
+        sourcesHtml += '</ul>';
+        sourcesDiv.innerHTML = sourcesHtml;
+        
+        messageElement.querySelector('.message-content').appendChild(sourcesDiv);
+    }
 
     escapeHtml(text) {
         const div = document.createElement('div');

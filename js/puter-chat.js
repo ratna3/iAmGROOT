@@ -9,6 +9,8 @@ class PuterChat {
         this.isGenerating = false;
         this.abortController = null;
         this.pendingAttachments = []; // Store pending file attachments
+        this.webSearchEnabled = true; // Enable web search by default
+        this.lastSearchResults = []; // Store last search results for citations
     }
 
     // Wait for Puter.js to be available
@@ -236,6 +238,115 @@ class PuterChat {
         } finally {
             this.isGenerating = false;
         }
+    }
+
+    // Send message with web search enhancement
+    async sendMessageWithSearch(message, onChunk, onComplete, onError, onSearchStart, onSearchComplete, attachments = []) {
+        if (!this.isReady) {
+            onError(new Error('Puter.js not initialized'));
+            return;
+        }
+
+        if (this.isGenerating) {
+            onError(new Error('Already generating a response'));
+            return;
+        }
+
+        this.isGenerating = true;
+        this.lastSearchResults = [];
+        let fullResponse = '';
+        let searchContext = '';
+
+        try {
+            // Check if web search would help with this query
+            if (this.webSearchEnabled && typeof webSearchService !== 'undefined' && webSearchService.needsWebSearch(message)) {
+                console.log('[PuterChat] Query may benefit from web search');
+                
+                // Notify UI that search is starting
+                if (onSearchStart) onSearchStart();
+                
+                // Perform web search
+                const searchResults = await webSearchService.performSearch(message);
+                this.lastSearchResults = searchResults;
+                
+                // Notify UI that search is complete
+                if (onSearchComplete) onSearchComplete(searchResults);
+                
+                if (searchResults.length > 0) {
+                    searchContext = webSearchService.formatResultsForAI(searchResults);
+                    searchContext += '\n' + webSearchService.getCitationInstructions() + '\n\n---\n\n';
+                    console.log('[PuterChat] Added search context with', searchResults.length, 'results');
+                }
+            }
+
+            // Build user message content
+            let userContent;
+            const enhancedMessage = searchContext ? searchContext + 'User Question: ' + message : message;
+            
+            if (attachments.length > 0) {
+                userContent = await this.buildMultimodalContent(enhancedMessage, attachments);
+            } else {
+                userContent = enhancedMessage;
+            }
+
+            // Add user message to history (store original text for history)
+            this.addToHistory('user', message);
+
+            // Prepare messages for API
+            const messages = this.conversationHistory.slice(0, -1).map(msg => ({
+                role: msg.role,
+                content: msg.content
+            }));
+
+            // Add current message with potential search context and multimodal content
+            messages.push({
+                role: 'user',
+                content: userContent
+            });
+
+            // Call Puter.js AI with streaming
+            const response = await puter.ai.chat(messages, {
+                model: this.currentModel,
+                stream: true
+            });
+
+            // Process streaming response
+            for await (const part of response) {
+                if (part?.text) {
+                    fullResponse += part.text;
+                    onChunk(part.text, fullResponse);
+                }
+            }
+
+            // Add complete response to history
+            this.addToHistory('assistant', fullResponse);
+
+            // Clear attachments after successful send
+            this.clearAttachments();
+
+            // Call completion callback with search results
+            onComplete(fullResponse, this.lastSearchResults);
+        } catch (error) {
+            console.error('Streaming with search error:', error);
+            onError(error);
+        } finally {
+            this.isGenerating = false;
+        }
+    }
+
+    // Get last search results
+    getLastSearchResults() {
+        return this.lastSearchResults;
+    }
+
+    // Enable/disable web search
+    setWebSearchEnabled(enabled) {
+        this.webSearchEnabled = enabled;
+    }
+
+    // Check if web search is enabled
+    isWebSearchEnabled() {
+        return this.webSearchEnabled;
     }
 
     // Stop current generation
