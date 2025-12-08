@@ -596,6 +596,13 @@ class ChatApp {
     }
 
     async createNewConversation() {
+        // Auth guard - prevent creating conversation without login
+        if (!this.isAuthenticated) {
+            this.showToast('Please sign in to start a conversation', 'error');
+            this.showLoginScreen();
+            return;
+        }
+        
         const model = this.elements.modelSelect.value;
         const conversation = await supabaseService.createConversation('New Conversation', model);
         
@@ -707,6 +714,13 @@ class ChatApp {
 
     async handleSubmit(e) {
         e.preventDefault();
+        
+        // Auth guard - prevent chat without login
+        if (!this.isAuthenticated) {
+            this.showToast('Please sign in to chat', 'error');
+            this.showLoginScreen();
+            return;
+        }
         
         const message = this.elements.messageInput.value.trim();
         const hasAttachments = this.pendingFiles.length > 0;
