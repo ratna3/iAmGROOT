@@ -33,13 +33,14 @@ class ChatApp {
         // Initialize theme
         this.initTheme();
         
-        // Initialize services
-        await this.initServices();
-        
-        // Setup auth state listener
+        // Setup auth state listener FIRST (before Supabase init)
+        // This ensures we catch auth events during initialization
         this.setupAuthListener();
         
-        // Check authentication state
+        // Initialize services (Supabase will fire auth events here)
+        await this.initServices();
+        
+        // Check authentication state (fallback for missed events)
         await this.checkAuthState();
         
         console.log('Chat app initialized');
@@ -48,13 +49,23 @@ class ChatApp {
     // Setup authentication state listener
     setupAuthListener() {
         supabaseService.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session) {
+            console.log('App received auth event:', event, session ? 'with session' : 'no session');
+            
+            // Handle sign in and initial session (including OAuth callback)
+            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session) {
+                console.log('User authenticated:', session.user.email);
                 this.isAuthenticated = true;
                 this.showApp();
                 await this.loadConversations();
                 this.setupRealtimeSubscriptions();
                 this.updateUserInfo(session.user);
             } else if (event === 'SIGNED_OUT') {
+                console.log('User signed out');
+                this.isAuthenticated = false;
+                this.showLoginScreen();
+            } else if (event === 'INITIAL_SESSION' && !session) {
+                // No session on initial load - show login
+                console.log('No initial session, showing login');
                 this.isAuthenticated = false;
                 this.showLoginScreen();
             }

@@ -7,6 +7,8 @@ class SupabaseService {
         this.authUser = null;
         this.initialized = false;
         this.authStateCallbacks = [];
+        this.lastAuthEvent = null;  // Store last auth event for late subscribers
+        this.lastSession = null;    // Store last session for late subscribers
     }
 
     // Initialize Supabase client
@@ -59,6 +61,10 @@ class SupabaseService {
         this.client.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
             
+            // Store the last event and session for late subscribers
+            this.lastAuthEvent = event;
+            this.lastSession = session;
+            
             if (event === 'SIGNED_IN' && session) {
                 console.log('User signed in:', session.user.email);
                 this.authUser = session.user;
@@ -83,8 +89,16 @@ class SupabaseService {
     }
 
     // Register auth state change callback
+    // If the auth state has already been set, immediately notify the new callback
     onAuthStateChange(callback) {
         this.authStateCallbacks.push(callback);
+        
+        // If we already have an auth state, immediately notify this callback
+        // This ensures late subscribers don't miss the initial auth event
+        if (this.lastAuthEvent !== null) {
+            console.log('Replaying auth event to new subscriber:', this.lastAuthEvent);
+            callback(this.lastAuthEvent, this.lastSession);
+        }
     }
 
     // Sign in with Google
