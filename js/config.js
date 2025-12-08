@@ -4,8 +4,8 @@
 const CONFIG = {
     // Supabase Configuration
     // Get these from your Supabase project dashboard: https://supabase.com/dashboard
-    SUPABASE_URL: 'https://kcftjfcjqshlouqbxspy.supabase.co', // e.g., 'https://xxxxx.supabase.co'
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjZnRqZmNqcXNobG91cWJ4c3B5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MDA4NTAsImV4cCI6MjA4MDE3Njg1MH0.HqLgnepNgV2tNyiVLzYv1lMhFlm-R7K4tJnafOJqhr0', // Your project's anon/public key
+    SUPABASE_URL: 'https://wgqdlnwstrqbvwlgojjc.supabase.co', // e.g., 'https://xxxxx.supabase.co'
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWRsbndzdHJxYnZ3bGdvampjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMDcwNDQsImV4cCI6MjA4MDc4MzA0NH0.eVnvx9m7Mm7wx7kzryurt2MIG7Y6dnXsRrldBPDeMlU', // Your project's anon/public key - Get from Supabase Dashboard > Settings > API
     
     // Default AI Model
     DEFAULT_MODEL: 'claude-sonnet-4-5',
