@@ -7,8 +7,6 @@ class SupabaseService {
         this.authUser = null;
         this.initialized = false;
         this.authStateCallbacks = [];
-        this.lastAuthEvent = null;  // Store last auth event for late subscribers
-        this.lastSession = null;    // Store last session for late subscribers
     }
 
     // Initialize Supabase client
@@ -31,13 +29,16 @@ class SupabaseService {
             
             console.log('[Supabase] Creating client...');
             
-            // Initialize Supabase client (simplified - no auth)
+            // Initialize Supabase client
             this.client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
             
             console.log('[Supabase] Client created successfully');
             
-            // Create or get anonymous user for local storage
-            await this.getOrCreateAnonymousUser();
+            // Setup auth state listener
+            this.setupAuthListener();
+            
+            // Check for existing session
+            await this.checkExistingSession();
             
             this.initialized = true;
             console.log('[Supabase] Initialization complete!');
@@ -48,67 +49,79 @@ class SupabaseService {
             return false;
         }
     }
-    
-    // Get or create anonymous user for storing conversations
-    async getOrCreateAnonymousUser() {
-        try {
-            // Check for existing anonymous ID in localStorage
-            let anonymousId = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_ID);
+
+    // Setup authentication state listener
+    setupAuthListener() {
+        if (!this.client) return;
+        
+        this.client.auth.onAuthStateChange(async (event, session) => {
+            console.log('[Supabase] Auth state changed:', event);
             
-            if (!anonymousId) {
-                // Generate a new anonymous ID
-                anonymousId = 'anon_' + crypto.randomUUID();
-                localStorage.setItem(CONFIG.STORAGE_KEYS.USER_ID, anonymousId);
-                console.log('[Supabase] Created new anonymous ID:', anonymousId);
-            } else {
-                console.log('[Supabase] Using existing anonymous ID:', anonymousId);
-            }
-            
-            // Check if user exists in database
-            const { data: existingUser } = await this.client
-                .from('users')
-                .select('*')
-                .eq('anonymous_id', anonymousId)
-                .single();
-            
-            if (existingUser) {
-                this.currentUser = existingUser;
-                console.log('[Supabase] Found existing user');
-            } else {
-                // Create new anonymous user
-                const { data: newUser, error } = await this.client
-                    .from('users')
-                    .insert([{ anonymous_id: anonymousId }])
-                    .select()
-                    .single();
-                
-                if (error) {
-                    console.log('[Supabase] Could not create user (RLS may block it):', error.message);
+            if (event === 'SIGNED_IN' && session) {
+                console.log('[Supabase] User signed in:', session.user.email);
+                this.authUser = session.user;
+                await this.getOrCreateAuthUser();
+                this.notifyAuthStateChange('SIGNED_IN', session);
+            } else if (event === 'SIGNED_OUT') {
+                console.log('[Supabase] User signed out');
+                this.authUser = null;
+                this.currentUser = null;
+                this.notifyAuthStateChange('SIGNED_OUT', null);
+            } else if (event === 'TOKEN_REFRESHED') {
+                console.log('[Supabase] Token refreshed');
+            } else if (event === 'INITIAL_SESSION') {
+                if (session) {
+                    console.log('[Supabase] Initial session found:', session.user.email);
+                    this.authUser = session.user;
+                    await this.getOrCreateAuthUser();
+                    this.notifyAuthStateChange('SIGNED_IN', session);
                 } else {
-                    this.currentUser = newUser;
-                    console.log('[Supabase] Created new anonymous user');
+                    console.log('[Supabase] No initial session');
+                    this.notifyAuthStateChange('SIGNED_OUT', null);
                 }
             }
+        });
+    }
+
+    // Check for existing session on page load
+    async checkExistingSession() {
+        try {
+            const { data: { session }, error } = await this.client.auth.getSession();
+            if (error) throw error;
+            
+            if (session) {
+                console.log('[Supabase] Found existing session:', session.user.email);
+                this.authUser = session.user;
+                await this.getOrCreateAuthUser();
+                return session;
+            }
+            return null;
         } catch (error) {
-            console.log('[Supabase] Anonymous user setup skipped:', error.message);
+            console.error('[Supabase] Error checking session:', error);
+            return null;
         }
     }
 
-    // Setup authentication state listener (disabled - no login)
-    setupAuthListener() {
-        // Disabled - no login required
+    // Notify all auth state callbacks
+    notifyAuthStateChange(event, session) {
+        this.authStateCallbacks.forEach(callback => {
+            try {
+                callback(event, session);
+            } catch (e) {
+                console.error('[Supabase] Auth callback error:', e);
+            }
+        });
     }
 
     // Register auth state change callback
-    // If the auth state has already been set, immediately notify the new callback
     onAuthStateChange(callback) {
         this.authStateCallbacks.push(callback);
         
-        // If we already have an auth state, immediately notify this callback
-        // This ensures late subscribers don't miss the initial auth event
-        if (this.lastAuthEvent !== null) {
-            console.log('Replaying auth event to new subscriber:', this.lastAuthEvent);
-            callback(this.lastAuthEvent, this.lastSession);
+        // Immediately notify with current state
+        if (this.authUser) {
+            callback('SIGNED_IN', { user: this.authUser });
+        } else {
+            callback('SIGNED_OUT', null);
         }
     }
 
@@ -119,36 +132,32 @@ class SupabaseService {
         }
         
         try {
-            console.log('Starting Google OAuth flow...');
-            console.log('Redirect URL:', CONFIG.REDIRECT_URL);
+            console.log('[Supabase] Starting Google OAuth flow...');
+            console.log('[Supabase] Redirect URL:', CONFIG.REDIRECT_URL);
             
             const { data, error } = await this.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: CONFIG.REDIRECT_URL,
-                    queryParams: {
-                        access_type: 'offline',
-                        prompt: 'consent'
-                    }
+                    redirectTo: CONFIG.REDIRECT_URL
                 }
             });
             
             if (error) {
-                console.error('OAuth error:', error);
+                console.error('[Supabase] OAuth error:', error);
                 throw error;
             }
             
-            console.log('OAuth initiated:', data);
+            console.log('[Supabase] OAuth initiated');
             return data;
         } catch (error) {
-            console.error('Google sign in failed:', error);
+            console.error('[Supabase] Google sign in failed:', error);
             throw error;
         }
     }
 
     // Sign out
     async signOut() {
-        if (!this.client) return;
+        if (!this.client) return false;
         
         try {
             const { error } = await this.client.auth.signOut();
@@ -159,9 +168,10 @@ class SupabaseService {
             localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_ID);
             localStorage.removeItem(CONFIG.STORAGE_KEYS.CURRENT_CONVERSATION);
             
+            console.log('[Supabase] Signed out successfully');
             return true;
         } catch (error) {
-            console.error('Sign out failed:', error);
+            console.error('[Supabase] Sign out failed:', error);
             throw error;
         }
     }
@@ -175,7 +185,7 @@ class SupabaseService {
             if (error) throw error;
             return session;
         } catch (error) {
-            console.error('Failed to get session:', error);
+            console.error('[Supabase] Failed to get session:', error);
             return null;
         }
     }
@@ -196,7 +206,7 @@ class SupabaseService {
     }
 
     // Get or create user in users table (linked to auth user)
-    async getOrCreateUser() {
+    async getOrCreateAuthUser() {
         if (!this.client || !this.authUser) return null;
         
         try {

@@ -11,7 +11,7 @@ class ChatApp {
         this.pendingFiles = []; // Store files to be sent
         this.conversationsChannel = null; // Real-time subscription
         this.messagesChannel = null; // Real-time subscription
-        this.isAuthenticated = true; // No login required - always authenticated
+        this.isAuthenticated = false; // Starts as not authenticated
         
         // DOM Elements
         this.elements = {};
@@ -35,45 +35,68 @@ class ChatApp {
         // Initialize theme
         this.initTheme();
         
+        // Show loading while initializing
+        this.showLoading();
+        
         // Initialize services
         await this.initServices();
         
-        // Skip login - show app directly
-        this.showApp();
+        // Setup auth state listener - this will handle showing login or app
+        this.setupAuthListener();
         
-        // Try to load conversations if Supabase is available
-        try {
-            await this.loadConversations();
-        } catch (e) {
-            console.log('Could not load conversations:', e);
-        }
-        
-        console.log('[App] Chat app fully initialized');
+        console.log('[App] Chat app initialized, waiting for auth state...');
     }
 
-    // Setup authentication state listener (kept for future use)
+    // Setup authentication state listener
     setupAuthListener() {
-        // Disabled - no login required
-    }
-
-    // Check current authentication state (kept for future use)
-    async checkAuthState() {
-        // Disabled - no login required
-        this.showApp();
+        supabaseService.onAuthStateChange(async (event, session) => {
+            console.log('[App] Auth state changed:', event);
+            
+            if (event === 'SIGNED_IN' && session) {
+                this.isAuthenticated = true;
+                this.updateUserInfo(session.user || supabaseService.getAuthUser());
+                this.showApp();
+                
+                // Load user's conversations
+                try {
+                    await this.loadConversations();
+                } catch (e) {
+                    console.log('[App] Could not load conversations:', e);
+                }
+            } else if (event === 'SIGNED_OUT') {
+                this.isAuthenticated = false;
+                this.conversations = [];
+                this.currentConversation = null;
+                this.messages = [];
+                this.showLoginScreen();
+            }
+            
+            this.hideLoading();
+        });
     }
 
     // Show login screen
     showLoginScreen() {
-        this.elements.loginScreen.classList.add('active');
-        this.elements.appContainer.style.display = 'none';
-        this.elements.loadingOverlay.classList.remove('active');
+        console.log('[App] Showing login screen');
+        if (this.elements.loginScreen) {
+            this.elements.loginScreen.classList.add('active');
+        }
+        if (this.elements.appContainer) {
+            this.elements.appContainer.style.display = 'none';
+        }
+        this.hideLoading();
     }
 
     // Show main app
     showApp() {
-        this.elements.loginScreen.classList.remove('active');
-        this.elements.appContainer.style.display = 'flex';
-        this.elements.loadingOverlay.classList.remove('active');
+        console.log('[App] Showing main app');
+        if (this.elements.loginScreen) {
+            this.elements.loginScreen.classList.remove('active');
+        }
+        if (this.elements.appContainer) {
+            this.elements.appContainer.style.display = 'flex';
+        }
+        this.hideLoading();
     }
 
     // Update user info in sidebar
@@ -81,16 +104,20 @@ class ChatApp {
         if (user && this.elements.userEmail) {
             this.elements.userEmail.textContent = user.email || 'User';
         }
+        if (this.elements.userInfo) {
+            this.elements.userInfo.style.display = user ? 'flex' : 'none';
+        }
     }
 
     // Handle Google sign in
     async handleGoogleSignIn() {
         try {
-            this.elements.loadingOverlay.classList.add('active');
+            console.log('[App] Starting Google sign in...');
+            this.showLoading();
             await supabaseService.signInWithGoogle();
+            // OAuth will redirect, so we don't need to do anything else here
         } catch (error) {
-            console.error('Sign in failed:', error);
-            // Provide more specific error messages
+            console.error('[App] Sign in failed:', error);
             let errorMessage = 'Sign in failed. ';
             if (error.message) {
                 if (error.message.includes('provider')) {
@@ -104,22 +131,22 @@ class ChatApp {
                 errorMessage += 'Please check console for details.';
             }
             this.showToast(errorMessage, 'error');
-            this.elements.loadingOverlay.classList.remove('active');
+            this.hideLoading();
         }
     }
 
     // Handle sign out
     async handleSignOut() {
         try {
+            console.log('[App] Signing out...');
+            this.showLoading();
             await supabaseService.signOut();
-            this.conversations = [];
-            this.currentConversation = null;
-            this.messages = [];
-            this.showLoginScreen();
+            // Auth state listener will handle the UI update
             this.showToast('Signed out successfully', 'success');
         } catch (error) {
-            console.error('Sign out failed:', error);
+            console.error('[App] Sign out failed:', error);
             this.showToast('Sign out failed. Please try again.', 'error');
+            this.hideLoading();
         }
     }
 
