@@ -14,6 +14,9 @@ class SupabaseService {
     // Initialize Supabase client
     async init() {
         console.log('[Supabase] init() called, initialized:', this.initialized);
+        console.log('[Supabase] Current URL:', window.location.href);
+        console.log('[Supabase] URL hash:', window.location.hash);
+        console.log('[Supabase] URL search params:', window.location.search);
         
         if (this.initialized) {
             console.log('[Supabase] Already initialized, returning true');
