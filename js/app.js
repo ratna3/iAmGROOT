@@ -25,78 +25,41 @@ class ChatApp {
         
         // Cache DOM elements
         this.cacheElements();
-        console.log('[App] DOM elements cached');
         
         // Set up event listeners
         this.setupEventListeners();
-        console.log('[App] Event listeners set up');
         
         // Set up file handling
         this.setupFileHandling();
         
         // Initialize theme
         this.initTheme();
-        console.log('[App] Theme initialized');
         
-        // Setup auth state listener FIRST (before Supabase init)
-        // This ensures we catch auth events during initialization
-        this.setupAuthListener();
-        console.log('[App] Auth listener set up');
-        
-        // Initialize services (Supabase will fire auth events here)
+        // Initialize services
         await this.initServices();
         
-        // Check authentication state (fallback for missed events)
-        console.log('[App] Checking auth state...');
-        await this.checkAuthState();
+        // Skip login - show app directly
+        this.showApp();
+        
+        // Try to load conversations if Supabase is available
+        try {
+            await this.loadConversations();
+        } catch (e) {
+            console.log('Could not load conversations:', e);
+        }
         
         console.log('[App] Chat app fully initialized');
     }
 
-    // Setup authentication state listener
+    // Setup authentication state listener (kept for future use)
     setupAuthListener() {
-        supabaseService.onAuthStateChange(async (event, session) => {
-            console.log('App received auth event:', event, session ? 'with session' : 'no session');
-            
-            // Handle sign in and initial session (including OAuth callback)
-            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session) {
-                console.log('User authenticated:', session.user.email);
-                this.isAuthenticated = true;
-                this.showApp();
-                await this.loadConversations();
-                this.setupRealtimeSubscriptions();
-                this.updateUserInfo(session.user);
-            } else if (event === 'SIGNED_OUT') {
-                console.log('User signed out');
-                this.isAuthenticated = false;
-                this.showLoginScreen();
-            } else if (event === 'INITIAL_SESSION' && !session) {
-                // No session on initial load - show login
-                console.log('No initial session, showing login');
-                this.isAuthenticated = false;
-                this.showLoginScreen();
-            }
-        });
+        // Disabled - no login required
     }
 
-    // Check current authentication state
+    // Check current authentication state (kept for future use)
     async checkAuthState() {
-        console.log('[App] checkAuthState() called');
-        const session = await supabaseService.getSession();
-        console.log('[App] Session from getSession():', session ? 'Found' : 'Not found');
-        
-        if (session) {
-            console.log('[App] User authenticated:', session.user.email);
-            this.isAuthenticated = true;
-            this.showApp();
-            await this.loadConversations();
-            this.setupRealtimeSubscriptions();
-            this.updateUserInfo(session.user);
-        } else {
-            console.log('[App] No session, showing login screen');
-            this.isAuthenticated = false;
-            this.showLoginScreen();
-        }
+        // Disabled - no login required
+        this.showApp();
     }
 
     // Show login screen
