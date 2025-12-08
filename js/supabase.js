@@ -22,8 +22,15 @@ class SupabaseService {
                 return false;
             }
             
-            // Initialize Supabase client
-            this.client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+            // Initialize Supabase client with auth options for OAuth
+            this.client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+                auth: {
+                    autoRefreshToken: true,
+                    persistSession: true,
+                    detectSessionInUrl: true,  // Critical for OAuth callback handling
+                    flowType: 'pkce'  // Use PKCE flow for better security
+                }
+            });
             
             // Setup auth state listener
             this.setupAuthListener();
@@ -50,14 +57,24 @@ class SupabaseService {
         if (!this.client) return;
         
         this.client.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth state changed:', event);
+            console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
             
             if (event === 'SIGNED_IN' && session) {
+                console.log('User signed in:', session.user.email);
                 this.authUser = session.user;
                 await this.getOrCreateUser();
             } else if (event === 'SIGNED_OUT') {
+                console.log('User signed out');
                 this.authUser = null;
                 this.currentUser = null;
+            } else if (event === 'TOKEN_REFRESHED') {
+                console.log('Token refreshed');
+            } else if (event === 'INITIAL_SESSION') {
+                console.log('Initial session detected:', session ? session.user.email : 'No session');
+                if (session) {
+                    this.authUser = session.user;
+                    await this.getOrCreateUser();
+                }
             }
             
             // Notify all callbacks
@@ -77,14 +94,26 @@ class SupabaseService {
         }
         
         try {
+            console.log('Starting Google OAuth flow...');
+            console.log('Redirect URL:', CONFIG.REDIRECT_URL);
+            
             const { data, error } = await this.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: CONFIG.REDIRECT_URL
+                    redirectTo: CONFIG.REDIRECT_URL,
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent'
+                    }
                 }
             });
             
-            if (error) throw error;
+            if (error) {
+                console.error('OAuth error:', error);
+                throw error;
+            }
+            
+            console.log('OAuth initiated:', data);
             return data;
         } catch (error) {
             console.error('Google sign in failed:', error);
