@@ -11,15 +11,18 @@ class WebSearchService {
             'https://searx.be',
             'https://search.sapti.me',
             'https://searx.tiekoetter.com',
-            'https://search.bus-hit.me',
-            'https://searx.work'
+            'https://paulgo.io',
+            'https://search.ononoki.org',
+            'https://searx.work',
+            'https://opnxng.com'
         ];
         
         // CORS proxy for fetching external content
         this.corsProxies = [
             'https://api.allorigins.win/raw?url=',
             'https://corsproxy.io/?',
-            'https://api.codetabs.com/v1/proxy?quest='
+            'https://api.codetabs.com/v1/proxy?quest=',
+            'https://thingproxy.freeboard.io/fetch/'
         ];
         
         // RSS2JSON API for parsing RSS feeds (free tier)
@@ -29,19 +32,25 @@ class WebSearchService {
         this.newsKeywords = [
             'news', 'headlines', 'breaking', 'latest news', 'today news',
             'yesterday', 'this week', 'current events', 'top stories',
-            'updates', 'happening', 'announced', 'reported'
+            'updates', 'happening', 'announced', 'reported', 'previous day',
+            'previous', 'launched', 'released', 'unveiled', 'introduced',
+            '2024', '2025', 'latest', 'recent', 'new launch', 'just'
         ];
         
         // Keywords that suggest a question might benefit from web search
         this.searchTriggerKeywords = [
             // Time-sensitive
             'latest', 'recent', 'current', 'today', 'now', '2024', '2025', 'new', 'update',
-            'yesterday', 'this week', 'this month', 'breaking',
+            'yesterday', 'this week', 'this month', 'breaking', 'previous day', 'previous',
             // Factual queries
             'what is', 'who is', 'when did', 'where is', 'how to', 'why does',
             'define', 'explain', 'meaning of', 'definition',
             // News & Events
-            'news', 'headlines', 'announced', 'released', 'launched',
+            'news', 'headlines', 'announced', 'released', 'launched', 'unveiled',
+            'introduced', 'debuted',
+            // Products & Companies
+            'car', 'suv', 'vehicle', 'phone', 'smartphone', 'laptop', 'product',
+            'model', 'price', 'specs', 'features', 'review',
             // Course/Academic
             'course', 'tutorial', 'learn', 'study', 'lecture', 'university', 'college',
             'research', 'paper', 'article', 'journal', 'academic',
@@ -58,6 +67,9 @@ class WebSearchService {
             'programming', 'technology', 'science', 'medicine', 'health',
             'news', 'politics', 'economics', 'finance', 'stocks', 'crypto',
             'sports', 'weather', 'events', 'releases', 'election',
+            // Automotive - for questions like "latest tata car"
+            'car', 'suv', 'vehicle', 'automobile', 'tata', 'mahindra', 'maruti',
+            'hyundai', 'kia', 'honda', 'toyota', 'bmw', 'mercedes', 'audi',
             'government', 'policy', 'law', 'court'
         ];
     }
@@ -65,9 +77,24 @@ class WebSearchService {
     // Check if query is news-related
     isNewsQuery(query) {
         const lowerQuery = query.toLowerCase();
-        return this.newsKeywords.some(keyword => lowerQuery.includes(keyword)) ||
-               /\b(news|headlines|stories)\b/i.test(query) ||
-               /\b(yesterday|today|this week|latest)\b.*\b(news|update|event|happening)/i.test(query);
+        
+        // Check for explicit news keywords
+        const hasNewsKeyword = this.newsKeywords.some(keyword => lowerQuery.includes(keyword.toLowerCase()));
+        
+        // Check for patterns like "latest X", "new X in 2025", "X launched"
+        const newsPatterns = [
+            /\b(news|headlines|stories)\b/i,
+            /\b(yesterday|today|this week|latest|recent)\b.*\b(news|update|event|happening|launch)/i,
+            /\b(launched|released|unveiled|announced|introduced)\b.*\b(in|on)?\s*\d{4}/i,
+            /\b(top|latest|recent|new)\s+\d+\b/i,
+            /\blatest\s+(\w+\s+)?(car|suv|phone|product|model|version)/i,
+            /\b(what|which).*\b(latest|newest|recent)\b/i,
+            /\b\d{4}\b.*\b(launch|release|new|model)/i
+        ];
+        
+        const matchesPattern = newsPatterns.some(pattern => pattern.test(query));
+        
+        return hasNewsKeyword || matchesPattern;
     }
 
     // Check if a query might benefit from web search
@@ -102,6 +129,7 @@ class WebSearchService {
     async performSearch(query, maxResults = 5) {
         try {
             console.log('[WebSearch] Searching for:', query);
+            console.log('[WebSearch] Is news query:', this.isNewsQuery(query));
             
             let results = [];
             
@@ -109,6 +137,13 @@ class WebSearchService {
             if (this.isNewsQuery(query)) {
                 console.log('[WebSearch] Detected news query, using news search');
                 results = await this.searchNews(query, maxResults);
+                
+                // Try Bing News as fallback for news queries
+                if (results.length < 2) {
+                    console.log('[WebSearch] Trying Bing News fallback');
+                    const bingResults = await this.searchBingNews(query, maxResults);
+                    results = [...results, ...bingResults];
+                }
             }
             
             // If news search didn't return enough results, try general search
@@ -188,9 +223,16 @@ class WebSearchService {
     // Search for news using Google News RSS
     async searchNews(query, maxResults = 5) {
         try {
-            // Build Google News RSS URL
+            // Build Google News RSS URL - try India edition first if query seems India-related
             const encodedQuery = encodeURIComponent(query);
-            const googleNewsRss = `https://news.google.com/rss/search?q=${encodedQuery}&hl=en&gl=US&ceid=US:en`;
+            const isIndiaQuery = /\b(india|indian|delhi|mumbai|bangalore|chennai|kolkata|hyderabad|pune|uttar pradesh|up|maharashtra|karnataka|tamil nadu|gujarat|rajasthan|punjab|bihar|bengal|tata|reliance|infosys|wipro|hdfc|icici|sensex|nifty|rupee|modi|bjp|congress|aap)\b/i.test(query);
+            
+            // Use appropriate Google News edition
+            const googleNewsRss = isIndiaQuery
+                ? `https://news.google.com/rss/search?q=${encodedQuery}&hl=en-IN&gl=IN&ceid=IN:en`
+                : `https://news.google.com/rss/search?q=${encodedQuery}&hl=en&gl=US&ceid=US:en`;
+            
+            console.log('[WebSearch] Using Google News RSS:', isIndiaQuery ? 'India edition' : 'US edition');
             
             // Try RSS2JSON API first (most reliable)
             const rss2jsonUrl = `${this.rss2jsonUrl}${encodeURIComponent(googleNewsRss)}`;
@@ -240,6 +282,37 @@ class WebSearchService {
             return [];
         } catch (error) {
             console.warn('[WebSearch] News search failed:', error);
+            return [];
+        }
+    }
+
+    // Search Bing News as additional fallback
+    async searchBingNews(query, maxResults = 5) {
+        try {
+            const encodedQuery = encodeURIComponent(query);
+            // Use Bing News RSS feed
+            const bingNewsRss = `https://www.bing.com/news/search?q=${encodedQuery}&format=rss`;
+            
+            for (const proxy of this.corsProxies) {
+                try {
+                    const proxyUrl = `${proxy}${encodeURIComponent(bingNewsRss)}`;
+                    const response = await this.fetchWithTimeout(proxyUrl, 6000);
+                    
+                    if (response.ok) {
+                        const xmlText = await response.text();
+                        const results = this.parseRssFeed(xmlText, maxResults);
+                        if (results.length > 0) {
+                            console.log('[WebSearch] Bing News success');
+                            return results;
+                        }
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+            return [];
+        } catch (error) {
+            console.warn('[WebSearch] Bing News search failed:', error);
             return [];
         }
     }
