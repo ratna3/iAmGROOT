@@ -261,22 +261,35 @@ class PuterChat {
             // Check if web search would help with this query
             if (this.webSearchEnabled && typeof webSearchService !== 'undefined' && webSearchService.needsWebSearch(message)) {
                 console.log('[PuterChat] Query may benefit from web search');
+                console.log('[PuterChat] needsWebSearch returned true for:', message);
                 
                 // Notify UI that search is starting
                 if (onSearchStart) onSearchStart();
                 
-                // Perform web search
-                const searchResults = await webSearchService.performSearch(message);
-                this.lastSearchResults = searchResults;
-                
-                // Notify UI that search is complete
-                if (onSearchComplete) onSearchComplete(searchResults);
-                
-                if (searchResults.length > 0) {
-                    searchContext = webSearchService.formatResultsForAI(searchResults);
-                    searchContext += '\n' + webSearchService.getCitationInstructions() + '\n\n---\n\n';
-                    console.log('[PuterChat] Added search context with', searchResults.length, 'results');
+                try {
+                    // Perform web search
+                    const searchResults = await webSearchService.performSearch(message);
+                    this.lastSearchResults = searchResults;
+                    console.log('[PuterChat] Search returned', searchResults.length, 'results');
+                    
+                    // Notify UI that search is complete
+                    if (onSearchComplete) onSearchComplete(searchResults);
+                    
+                    if (searchResults.length > 0) {
+                        searchContext = webSearchService.formatResultsForAI(searchResults);
+                        searchContext += '\n' + webSearchService.getCitationInstructions() + '\n\n---\n\n';
+                        console.log('[PuterChat] Added search context with', searchResults.length, 'results');
+                    } else {
+                        // If no results, still tell AI to search online
+                        console.log('[PuterChat] No search results, adding fallback instruction');
+                        searchContext = `\n\n---\nNote: I attempted to search for current information about "${message}" but couldn't retrieve results. Please provide the most up-to-date information you have based on your training data, and clearly indicate that this may not reflect the latest developments.\n---\n\n`;
+                    }
+                } catch (searchError) {
+                    console.error('[PuterChat] Search error:', searchError);
+                    // Continue without search context if search fails
                 }
+            } else {
+                console.log('[PuterChat] Web search not triggered. Enabled:', this.webSearchEnabled, 'Service exists:', typeof webSearchService !== 'undefined');
             }
 
             // Build user message content
