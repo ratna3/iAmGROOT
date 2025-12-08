@@ -11,6 +11,7 @@ class ChatApp {
         this.pendingFiles = []; // Store files to be sent
         this.conversationsChannel = null; // Real-time subscription
         this.messagesChannel = null; // Real-time subscription
+        this.isAuthenticated = false;
         
         // DOM Elements
         this.elements = {};
@@ -35,17 +36,108 @@ class ChatApp {
         // Initialize services
         await this.initServices();
         
-        // Load conversations
-        await this.loadConversations();
+        // Setup auth state listener
+        this.setupAuthListener();
         
-        // Setup real-time subscriptions
-        this.setupRealtimeSubscriptions();
+        // Check authentication state
+        await this.checkAuthState();
         
         console.log('Chat app initialized');
     }
 
+    // Setup authentication state listener
+    setupAuthListener() {
+        supabaseService.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                this.isAuthenticated = true;
+                this.showApp();
+                await this.loadConversations();
+                this.setupRealtimeSubscriptions();
+                this.updateUserInfo(session.user);
+            } else if (event === 'SIGNED_OUT') {
+                this.isAuthenticated = false;
+                this.showLoginScreen();
+            }
+        });
+    }
+
+    // Check current authentication state
+    async checkAuthState() {
+        const session = await supabaseService.getSession();
+        
+        if (session) {
+            this.isAuthenticated = true;
+            this.showApp();
+            await this.loadConversations();
+            this.setupRealtimeSubscriptions();
+            this.updateUserInfo(session.user);
+        } else {
+            this.isAuthenticated = false;
+            this.showLoginScreen();
+        }
+    }
+
+    // Show login screen
+    showLoginScreen() {
+        this.elements.loginScreen.classList.add('active');
+        this.elements.appContainer.style.display = 'none';
+        this.elements.loadingOverlay.classList.remove('active');
+    }
+
+    // Show main app
+    showApp() {
+        this.elements.loginScreen.classList.remove('active');
+        this.elements.appContainer.style.display = 'flex';
+    }
+
+    // Update user info in sidebar
+    updateUserInfo(user) {
+        if (user && this.elements.userEmail) {
+            this.elements.userEmail.textContent = user.email || 'User';
+        }
+    }
+
+    // Handle Google sign in
+    async handleGoogleSignIn() {
+        try {
+            this.elements.loadingOverlay.classList.add('active');
+            await supabaseService.signInWithGoogle();
+        } catch (error) {
+            console.error('Sign in failed:', error);
+            this.showToast('Sign in failed. Please try again.', 'error');
+            this.elements.loadingOverlay.classList.remove('active');
+        }
+    }
+
+    // Handle sign out
+    async handleSignOut() {
+        try {
+            await supabaseService.signOut();
+            this.conversations = [];
+            this.currentConversation = null;
+            this.messages = [];
+            this.showLoginScreen();
+            this.showToast('Signed out successfully', 'success');
+        } catch (error) {
+            console.error('Sign out failed:', error);
+            this.showToast('Sign out failed. Please try again.', 'error');
+        }
+    }
+
     cacheElements() {
         this.elements = {
+            // App container
+            appContainer: document.querySelector('.app-container'),
+            
+            // Login screen
+            loginScreen: document.getElementById('loginScreen'),
+            googleLoginBtn: document.getElementById('googleLoginBtn'),
+            
+            // User info
+            userInfo: document.getElementById('userInfo'),
+            userEmail: document.getElementById('userEmail'),
+            logoutBtn: document.getElementById('logoutBtn'),
+            
             // Sidebar
             sidebar: document.getElementById('sidebar'),
             newChatBtn: document.getElementById('newChatBtn'),
@@ -82,6 +174,16 @@ class ChatApp {
     }
 
     setupEventListeners() {
+        // Google login button
+        if (this.elements.googleLoginBtn) {
+            this.elements.googleLoginBtn.addEventListener('click', () => this.handleGoogleSignIn());
+        }
+        
+        // Logout button
+        if (this.elements.logoutBtn) {
+            this.elements.logoutBtn.addEventListener('click', () => this.handleSignOut());
+        }
+        
         // New chat button
         this.elements.newChatBtn.addEventListener('click', () => this.createNewConversation());
         

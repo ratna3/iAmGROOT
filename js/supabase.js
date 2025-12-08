@@ -4,7 +4,9 @@ class SupabaseService {
     constructor() {
         this.client = null;
         this.currentUser = null;
+        this.authUser = null;
         this.initialized = false;
+        this.authStateCallbacks = [];
     }
 
     // Initialize Supabase client
@@ -23,8 +25,15 @@ class SupabaseService {
             // Initialize Supabase client
             this.client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
             
-            // Get or create user
-            await this.getOrCreateUser();
+            // Setup auth state listener
+            this.setupAuthListener();
+            
+            // Check for existing session
+            const { data: { session } } = await this.client.auth.getSession();
+            if (session) {
+                this.authUser = session.user;
+                await this.getOrCreateUser();
+            }
             
             this.initialized = true;
             console.log('Supabase initialized successfully');
@@ -36,42 +45,132 @@ class SupabaseService {
         }
     }
 
+    // Setup authentication state listener
+    setupAuthListener() {
+        if (!this.client) return;
+        
+        this.client.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth state changed:', event);
+            
+            if (event === 'SIGNED_IN' && session) {
+                this.authUser = session.user;
+                await this.getOrCreateUser();
+            } else if (event === 'SIGNED_OUT') {
+                this.authUser = null;
+                this.currentUser = null;
+            }
+            
+            // Notify all callbacks
+            this.authStateCallbacks.forEach(callback => callback(event, session));
+        });
+    }
+
+    // Register auth state change callback
+    onAuthStateChange(callback) {
+        this.authStateCallbacks.push(callback);
+    }
+
+    // Sign in with Google
+    async signInWithGoogle() {
+        if (!this.client) {
+            throw new Error('Supabase client not initialized');
+        }
+        
+        try {
+            const { data, error } = await this.client.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: CONFIG.REDIRECT_URL
+                }
+            });
+            
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Google sign in failed:', error);
+            throw error;
+        }
+    }
+
+    // Sign out
+    async signOut() {
+        if (!this.client) return;
+        
+        try {
+            const { error } = await this.client.auth.signOut();
+            if (error) throw error;
+            
+            this.authUser = null;
+            this.currentUser = null;
+            localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_ID);
+            localStorage.removeItem(CONFIG.STORAGE_KEYS.CURRENT_CONVERSATION);
+            
+            return true;
+        } catch (error) {
+            console.error('Sign out failed:', error);
+            throw error;
+        }
+    }
+
+    // Get current auth session
+    async getSession() {
+        if (!this.client) return null;
+        
+        try {
+            const { data: { session }, error } = await this.client.auth.getSession();
+            if (error) throw error;
+            return session;
+        } catch (error) {
+            console.error('Failed to get session:', error);
+            return null;
+        }
+    }
+
+    // Check if user is authenticated
+    isAuthenticated() {
+        return this.authUser !== null;
+    }
+
+    // Get authenticated user
+    getAuthUser() {
+        return this.authUser;
+    }
+
     // Check if Supabase is available
     isAvailable() {
         return this.client !== null;
     }
 
-    // Get or create anonymous user
+    // Get or create user in users table (linked to auth user)
     async getOrCreateUser() {
-        if (!this.client) return null;
+        if (!this.client || !this.authUser) return null;
         
         try {
-            // Check for existing user ID in local storage
-            let userId = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_ID);
+            // Check for existing user by auth ID
+            const { data: existingUser, error: fetchError } = await this.client
+                .from('users')
+                .select('*')
+                .eq('auth_id', this.authUser.id)
+                .single();
             
-            if (userId) {
-                // Verify user exists in database
-                const { data: existingUser, error } = await this.client
-                    .from('users')
-                    .select('*')
-                    .eq('id', userId)
-                    .single();
-                
-                if (!error && existingUser) {
-                    this.currentUser = existingUser;
-                    return existingUser;
-                }
+            if (!fetchError && existingUser) {
+                this.currentUser = existingUser;
+                localStorage.setItem(CONFIG.STORAGE_KEYS.USER_ID, existingUser.id);
+                return existingUser;
             }
             
-            // Create new anonymous user
-            const anonymousId = this.generateAnonymousId();
-            const { data: newUser, error } = await this.client
+            // Create new user linked to auth user
+            const { data: newUser, error: insertError } = await this.client
                 .from('users')
-                .insert([{ anonymous_id: anonymousId }])
+                .insert([{ 
+                    auth_id: this.authUser.id,
+                    email: this.authUser.email,
+                    anonymous_id: null
+                }])
                 .select()
                 .single();
             
-            if (error) throw error;
+            if (insertError) throw insertError;
             
             // Store user ID
             localStorage.setItem(CONFIG.STORAGE_KEYS.USER_ID, newUser.id);
@@ -84,7 +183,7 @@ class SupabaseService {
         }
     }
 
-    // Generate unique anonymous ID
+    // Generate unique anonymous ID (kept for backwards compatibility)
     generateAnonymousId() {
         return 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }

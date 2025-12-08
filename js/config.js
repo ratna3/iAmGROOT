@@ -25,6 +25,9 @@ const CONFIG = {
     ENABLE_STREAMING: true,
     MAX_MESSAGE_LENGTH: 10000,
     
+    // OAuth Redirect URL (update this for production)
+    REDIRECT_URL: window.location.origin,
+    
     // Local Storage Keys
     STORAGE_KEYS: {
         USER_ID: 'ai_chat_user_id',
