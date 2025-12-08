@@ -104,9 +104,6 @@ class ChatApp {
         if (user && this.elements.userEmail) {
             this.elements.userEmail.textContent = user.email || 'User';
         }
-        if (this.elements.userInfo) {
-            this.elements.userInfo.style.display = user ? 'flex' : 'none';
-        }
     }
 
     // Handle Google sign in
@@ -160,7 +157,6 @@ class ChatApp {
             googleLoginBtn: document.getElementById('googleLoginBtn'),
             
             // User info
-            userInfo: document.getElementById('userInfo'),
             userEmail: document.getElementById('userEmail'),
             logoutBtn: document.getElementById('logoutBtn'),
             

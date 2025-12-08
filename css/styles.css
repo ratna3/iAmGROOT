@@ -247,16 +247,8 @@ body {
     overflow: hidden;
 }
 
-.model-theme-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    width: 100%;
-}
-
 .model-selector {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -290,11 +282,36 @@ body {
     box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-.theme-toggle {
-    width: 38px;
-    height: 38px;
+.user-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+
+.user-actions-row .user-email {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     flex-shrink: 0;
-    border-radius: var(--radius-md);
+}
+
+.theme-toggle {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
     background-color: var(--bg-primary);
     color: var(--text-primary);
@@ -1256,40 +1273,24 @@ body {
     font-size: 0.75rem;
 }
 
-/* ===== User Info in Sidebar ===== */
-.user-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-color);
-    width: 100%;
-}
-
-.user-email {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    min-width: 0;
-}
-
+/* ===== Logout Button ===== */
 .logout-btn {
+    width: 32px;
+    height: 32px;
     background: transparent;
-    border: none;
+    border: 1px solid var(--border-color);
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 6px;
     border-radius: var(--radius-sm);
     transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .logout-btn:hover {
     color: var(--error-color);
-    background: var(--bg-tertiary);
+    border-color: var(--error-color);
+    background: rgba(239, 68, 68, 0.1);
 }
