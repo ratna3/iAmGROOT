@@ -13,13 +13,10 @@ class SupabaseService {
 
     // Initialize Supabase client
     async init() {
-        console.log('[Supabase] init() called, initialized:', this.initialized);
-        console.log('[Supabase] Current URL:', window.location.href);
-        console.log('[Supabase] URL hash:', window.location.hash);
-        console.log('[Supabase] URL search params:', window.location.search);
+        console.log('[Supabase] init() called');
         
         if (this.initialized) {
-            console.log('[Supabase] Already initialized, returning true');
+            console.log('[Supabase] Already initialized');
             return true;
         }
         
@@ -32,39 +29,15 @@ class SupabaseService {
                 return false;
             }
             
-            console.log('[Supabase] Creating client with URL:', CONFIG.SUPABASE_URL);
+            console.log('[Supabase] Creating client...');
             
-            // Initialize Supabase client with auth options for OAuth
-            this.client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
-                auth: {
-                    autoRefreshToken: true,
-                    persistSession: true,
-                    detectSessionInUrl: true,  // Critical for OAuth callback handling
-                    flowType: 'pkce'  // Use PKCE flow for better security
-                }
-            });
+            // Initialize Supabase client (simplified - no auth)
+            this.client = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
             
             console.log('[Supabase] Client created successfully');
             
-            // Setup auth state listener
-            this.setupAuthListener();
-            console.log('[Supabase] Auth listener set up');
-            
-            // Check for existing session
-            console.log('[Supabase] Checking for existing session...');
-            const { data: { session }, error: sessionError } = await this.client.auth.getSession();
-            
-            if (sessionError) {
-                console.error('[Supabase] Error getting session:', sessionError);
-            }
-            
-            console.log('[Supabase] Session check complete:', session ? 'Session found' : 'No session');
-            
-            if (session) {
-                this.authUser = session.user;
-                console.log('[Supabase] User from session:', session.user.email);
-                await this.getOrCreateUser();
-            }
+            // Create or get anonymous user for local storage
+            await this.getOrCreateAnonymousUser();
             
             this.initialized = true;
             console.log('[Supabase] Initialization complete!');
@@ -75,9 +48,56 @@ class SupabaseService {
             return false;
         }
     }
+    
+    // Get or create anonymous user for storing conversations
+    async getOrCreateAnonymousUser() {
+        try {
+            // Check for existing anonymous ID in localStorage
+            let anonymousId = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_ID);
+            
+            if (!anonymousId) {
+                // Generate a new anonymous ID
+                anonymousId = 'anon_' + crypto.randomUUID();
+                localStorage.setItem(CONFIG.STORAGE_KEYS.USER_ID, anonymousId);
+                console.log('[Supabase] Created new anonymous ID:', anonymousId);
+            } else {
+                console.log('[Supabase] Using existing anonymous ID:', anonymousId);
+            }
+            
+            // Check if user exists in database
+            const { data: existingUser } = await this.client
+                .from('users')
+                .select('*')
+                .eq('anonymous_id', anonymousId)
+                .single();
+            
+            if (existingUser) {
+                this.currentUser = existingUser;
+                console.log('[Supabase] Found existing user');
+            } else {
+                // Create new anonymous user
+                const { data: newUser, error } = await this.client
+                    .from('users')
+                    .insert([{ anonymous_id: anonymousId }])
+                    .select()
+                    .single();
+                
+                if (error) {
+                    console.log('[Supabase] Could not create user (RLS may block it):', error.message);
+                } else {
+                    this.currentUser = newUser;
+                    console.log('[Supabase] Created new anonymous user');
+                }
+            }
+        } catch (error) {
+            console.log('[Supabase] Anonymous user setup skipped:', error.message);
+        }
+    }
 
-    // Setup authentication state listener
+    // Setup authentication state listener (disabled - no login)
     setupAuthListener() {
+        // Disabled - no login required
+    }
         if (!this.client) return;
         
         this.client.auth.onAuthStateChange(async (event, session) => {
