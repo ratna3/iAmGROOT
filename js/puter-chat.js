@@ -227,38 +227,78 @@ class PuterChat {
                 content: message
             });
 
-            let response;
-            
             // Check if we have image attachments
             const imageAttachments = attachments.filter(a => a.type.startsWith('image/'));
             
             if (imageAttachments.length > 0) {
-                // For vision: Use Puter.js image URL format
-                // puter.ai.chat(prompt, imageURL, options)
+                // VISION REQUEST: Use gpt-5-nano model (required for vision in Puter.js)
+                // Format: puter.ai.chat(prompt, imageURL, { model: 'gpt-5-nano' })
                 const imageDataURLs = await this.getImageDataURLs(imageAttachments);
                 
-                console.log('[PuterChat] Sending vision request with', imageDataURLs.length, 'images');
+                console.log('[PuterChat] 🖼️ Sending VISION request with', imageDataURLs.length, 'images');
+                console.log('[PuterChat] 🖼️ Using gpt-5-nano model for vision (required)');
                 
-                // For single image, pass as second parameter
-                // For multiple images, pass as array
-                if (imageDataURLs.length === 1) {
-                    response = await puter.ai.chat(message || 'What do you see in this image?', imageDataURLs[0], {
-                        model: this.currentModel,
-                        stream: true
-                    });
-                } else {
-                    response = await puter.ai.chat(message || 'What do you see in these images?', imageDataURLs, {
-                        model: this.currentModel,
-                        stream: true
-                    });
+                const prompt = message || 'What do you see in this image? Please describe it in detail.';
+                
+                try {
+                    // Vision uses NON-STREAMING format with gpt-5-nano
+                    let visionResponse;
+                    if (imageDataURLs.length === 1) {
+                        visionResponse = await puter.ai.chat(prompt, imageDataURLs[0], {
+                            model: 'gpt-5-nano'  // Vision ONLY works with gpt-5-nano
+                        });
+                    } else {
+                        // Multiple images - process each one
+                        const imageDescriptions = [];
+                        for (let i = 0; i < imageDataURLs.length; i++) {
+                            const imgResponse = await puter.ai.chat(
+                                `Describe image ${i + 1}: ${prompt}`, 
+                                imageDataURLs[i], 
+                                { model: 'gpt-5-nano' }
+                            );
+                            const text = imgResponse?.message?.content?.[0]?.text || imgResponse?.message?.content || '';
+                            imageDescriptions.push(`**Image ${i + 1}:**\n${text}`);
+                        }
+                        // Combine descriptions
+                        fullResponse = imageDescriptions.join('\n\n');
+                        onChunk(fullResponse, fullResponse);
+                        this.addToHistory('assistant', fullResponse);
+                        this.clearAttachments();
+                        onComplete(fullResponse);
+                        return;
+                    }
+                    
+                    // Extract response text from vision API
+                    console.log('[PuterChat] 🖼️ Vision response received:', visionResponse);
+                    fullResponse = visionResponse?.message?.content?.[0]?.text || 
+                                   visionResponse?.message?.content || 
+                                   visionResponse?.text ||
+                                   (typeof visionResponse === 'string' ? visionResponse : '');
+                    
+                    if (!fullResponse) {
+                        console.error('[PuterChat] ❌ Vision response was empty:', visionResponse);
+                        fullResponse = 'I apologize, but I was unable to analyze the image. Please try uploading it again.';
+                    }
+                    
+                    // Send the complete response
+                    onChunk(fullResponse, fullResponse);
+                    this.addToHistory('assistant', fullResponse);
+                    this.clearAttachments();
+                    onComplete(fullResponse);
+                    return;
+                    
+                } catch (visionError) {
+                    console.error('[PuterChat] ❌ Vision error:', visionError);
+                    onError(new Error('Failed to analyze image: ' + visionError.message));
+                    return;
                 }
-            } else {
-                // Text-only message
-                response = await puter.ai.chat(messages, {
-                    model: this.currentModel,
-                    stream: true
-                });
             }
+            
+            // TEXT-ONLY MESSAGE: Use streaming with selected model
+            const response = await puter.ai.chat(messages, {
+                model: this.currentModel,
+                stream: true
+            });
 
             // Process streaming response
             for await (const part of response) {
@@ -302,8 +342,17 @@ class PuterChat {
         let searchContext = '';
 
         try {
-            // Check if web search would help with this query
-            if (this.webSearchEnabled && typeof webSearchService !== 'undefined' && webSearchService.needsWebSearch(message)) {
+            // Check if we have image attachments FIRST - skip web search for image analysis
+            const imageAttachments = attachments.filter(a => a.type.startsWith('image/'));
+            const hasImages = imageAttachments.length > 0;
+            
+            // Skip web search for image analysis queries
+            if (hasImages) {
+                console.log('[PuterChat] 🖼️ Image attachments detected - skipping web search for image analysis');
+            }
+            
+            // Check if web search would help with this query (ONLY for text-only queries)
+            if (!hasImages && this.webSearchEnabled && typeof webSearchService !== 'undefined' && webSearchService.needsWebSearch(message)) {
                 console.log('[PuterChat] Query may benefit from web search');
                 console.log('[PuterChat] needsWebSearch returned true for:', message);
                 
@@ -356,38 +405,76 @@ class PuterChat {
 
             let response;
             
-            // Check if we have image attachments
-            const imageAttachments = attachments.filter(a => a.type.startsWith('image/'));
-            
-            if (imageAttachments.length > 0) {
-                // For vision: Use Puter.js image URL format
-                // puter.ai.chat(prompt, imageURL, options)
+            // Check if we have image attachments (already checked above)
+            if (hasImages) {
+                // VISION REQUEST: Use gpt-5-nano model (required for vision in Puter.js)
+                // Format: puter.ai.chat(prompt, imageURL, { model: 'gpt-5-nano' })
                 const imageDataURLs = await this.getImageDataURLs(imageAttachments);
                 
-                console.log('[PuterChat] Sending vision request with', imageDataURLs.length, 'images');
+                console.log('[PuterChat] 🖼️ Sending VISION request with', imageDataURLs.length, 'images');
+                console.log('[PuterChat] 🖼️ Using gpt-5-nano model for vision (required)');
                 
-                // For single image, pass as second parameter
-                // For multiple images, pass as array
-                const prompt = enhancedMessage || 'What do you see in this image? Please describe it in detail.';
+                const prompt = message || 'What do you see in this image? Please describe it in detail.';
                 
-                if (imageDataURLs.length === 1) {
-                    response = await puter.ai.chat(prompt, imageDataURLs[0], {
-                        model: this.currentModel,
-                        stream: true
-                    });
-                } else {
-                    response = await puter.ai.chat(prompt, imageDataURLs, {
-                        model: this.currentModel,
-                        stream: true
-                    });
+                try {
+                    // Vision uses NON-STREAMING format with gpt-5-nano
+                    let visionResponse;
+                    if (imageDataURLs.length === 1) {
+                        visionResponse = await puter.ai.chat(prompt, imageDataURLs[0], {
+                            model: 'gpt-5-nano'  // Vision ONLY works with gpt-5-nano
+                        });
+                    } else {
+                        // Multiple images - process each one
+                        const imageDescriptions = [];
+                        for (let i = 0; i < imageDataURLs.length; i++) {
+                            const imgResponse = await puter.ai.chat(
+                                `Describe image ${i + 1}: ${prompt}`, 
+                                imageDataURLs[i], 
+                                { model: 'gpt-5-nano' }
+                            );
+                            const text = imgResponse?.message?.content?.[0]?.text || imgResponse?.message?.content || '';
+                            imageDescriptions.push(`**Image ${i + 1}:**\n${text}`);
+                        }
+                        // Combine descriptions
+                        fullResponse = imageDescriptions.join('\n\n');
+                        onChunk(fullResponse, fullResponse);
+                        this.addToHistory('assistant', fullResponse);
+                        this.clearAttachments();
+                        onComplete(fullResponse, []);
+                        return;
+                    }
+                    
+                    // Extract response text from vision API
+                    console.log('[PuterChat] 🖼️ Vision response received:', visionResponse);
+                    fullResponse = visionResponse?.message?.content?.[0]?.text || 
+                                   visionResponse?.message?.content || 
+                                   visionResponse?.text ||
+                                   (typeof visionResponse === 'string' ? visionResponse : '');
+                    
+                    if (!fullResponse) {
+                        console.error('[PuterChat] ❌ Vision response was empty:', visionResponse);
+                        fullResponse = 'I apologize, but I was unable to analyze the image. Please try uploading it again.';
+                    }
+                    
+                    // Send the complete response
+                    onChunk(fullResponse, fullResponse);
+                    this.addToHistory('assistant', fullResponse);
+                    this.clearAttachments();
+                    onComplete(fullResponse, []);
+                    return;
+                    
+                } catch (visionError) {
+                    console.error('[PuterChat] ❌ Vision error:', visionError);
+                    onError(new Error('Failed to analyze image: ' + visionError.message));
+                    return;
                 }
-            } else {
-                // Text-only message: Use messages array format
-                response = await puter.ai.chat(messages, {
-                    model: this.currentModel,
-                    stream: true
-                });
             }
+            
+            // TEXT-ONLY MESSAGE: Use streaming with selected model
+            response = await puter.ai.chat(messages, {
+                model: this.currentModel,
+                stream: true
+            });
 
             // Process streaming response
             for await (const part of response) {
