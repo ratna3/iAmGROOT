@@ -87,7 +87,20 @@ class PuterChat {
         return this.pendingAttachments;
     }
 
-    // Convert file to base64
+    // Convert file to base64 data URL (full data URL format)
+    async fileToDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                // Return the full data URL (e.g., "data:image/png;base64,...")
+                resolve(reader.result);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Convert file to base64 (just the base64 part without prefix)
     async fileToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -102,6 +115,7 @@ class PuterChat {
     }
 
     // Build multimodal content array for vision
+    // Note: Puter.js uses a simpler format - image URL as second parameter
     async buildMultimodalContent(textMessage, attachments) {
         const content = [];
 
@@ -129,6 +143,18 @@ class PuterChat {
         }
 
         return content;
+    }
+
+    // Get image data URLs from attachments (for Puter.js vision API)
+    async getImageDataURLs(attachments) {
+        const imageURLs = [];
+        for (const attachment of attachments) {
+            if (attachment.type.startsWith('image/')) {
+                const dataURL = await this.fileToDataURL(attachment.file);
+                imageURLs.push(dataURL);
+            }
+        }
+        return imageURLs;
     }
 
     // Send message and get response (non-streaming)
@@ -186,35 +212,53 @@ class PuterChat {
         let fullResponse = '';
 
         try {
-            // Build user message content
-            let userContent;
-            if (attachments.length > 0) {
-                // Multimodal message with images
-                userContent = await this.buildMultimodalContent(message, attachments);
-            } else {
-                userContent = message;
-            }
-
             // Add user message to history (store text version for history)
             this.addToHistory('user', message);
 
-            // Prepare messages for API
+            // Prepare messages for API (without current message)
             const messages = this.conversationHistory.slice(0, -1).map(msg => ({
                 role: msg.role,
                 content: msg.content
             }));
 
-            // Add current message with potential multimodal content
+            // Add current message
             messages.push({
                 role: 'user',
-                content: userContent
+                content: message
             });
 
-            // Call Puter.js AI with streaming
-            const response = await puter.ai.chat(messages, {
-                model: this.currentModel,
-                stream: true
-            });
+            let response;
+            
+            // Check if we have image attachments
+            const imageAttachments = attachments.filter(a => a.type.startsWith('image/'));
+            
+            if (imageAttachments.length > 0) {
+                // For vision: Use Puter.js image URL format
+                // puter.ai.chat(prompt, imageURL, options)
+                const imageDataURLs = await this.getImageDataURLs(imageAttachments);
+                
+                console.log('[PuterChat] Sending vision request with', imageDataURLs.length, 'images');
+                
+                // For single image, pass as second parameter
+                // For multiple images, pass as array
+                if (imageDataURLs.length === 1) {
+                    response = await puter.ai.chat(message || 'What do you see in this image?', imageDataURLs[0], {
+                        model: this.currentModel,
+                        stream: true
+                    });
+                } else {
+                    response = await puter.ai.chat(message || 'What do you see in these images?', imageDataURLs, {
+                        model: this.currentModel,
+                        stream: true
+                    });
+                }
+            } else {
+                // Text-only message
+                response = await puter.ai.chat(messages, {
+                    model: this.currentModel,
+                    stream: true
+                });
+            }
 
             // Process streaming response
             for await (const part of response) {
@@ -293,35 +337,57 @@ class PuterChat {
             }
 
             // Build user message content
-            let userContent;
             const enhancedMessage = searchContext ? searchContext + 'User Question: ' + message : message;
-            
-            if (attachments.length > 0) {
-                userContent = await this.buildMultimodalContent(enhancedMessage, attachments);
-            } else {
-                userContent = enhancedMessage;
-            }
 
             // Add user message to history (store original text for history)
             this.addToHistory('user', message);
 
-            // Prepare messages for API
+            // Prepare messages for API (without current message)
             const messages = this.conversationHistory.slice(0, -1).map(msg => ({
                 role: msg.role,
                 content: msg.content
             }));
 
-            // Add current message with potential search context and multimodal content
+            // Add current message
             messages.push({
                 role: 'user',
-                content: userContent
+                content: enhancedMessage
             });
 
-            // Call Puter.js AI with streaming
-            const response = await puter.ai.chat(messages, {
-                model: this.currentModel,
-                stream: true
-            });
+            let response;
+            
+            // Check if we have image attachments
+            const imageAttachments = attachments.filter(a => a.type.startsWith('image/'));
+            
+            if (imageAttachments.length > 0) {
+                // For vision: Use Puter.js image URL format
+                // puter.ai.chat(prompt, imageURL, options)
+                const imageDataURLs = await this.getImageDataURLs(imageAttachments);
+                
+                console.log('[PuterChat] Sending vision request with', imageDataURLs.length, 'images');
+                
+                // For single image, pass as second parameter
+                // For multiple images, pass as array
+                const prompt = enhancedMessage || 'What do you see in this image? Please describe it in detail.';
+                
+                if (imageDataURLs.length === 1) {
+                    response = await puter.ai.chat(prompt, imageDataURLs[0], {
+                        model: this.currentModel,
+                        stream: true
+                    });
+                } else {
+                    response = await puter.ai.chat(prompt, imageDataURLs, {
+                        model: this.currentModel,
+                        stream: true
+                    });
+                }
+            } else {
+                // Text-only message: Use messages array format
+                response = await puter.ai.chat(messages, {
+                    model: this.currentModel,
+                    stream: true
+                });
+            }
 
             // Process streaming response
             for await (const part of response) {
