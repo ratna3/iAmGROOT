@@ -788,7 +788,7 @@ copies or substantial portions of the Software.
 **Ratna Kirti**
 
 [![Email](https://img.shields.io/badge/Email-ratnakirtiscr%40gmail.com-red?style=for-the-badge&logo=gmail)](mailto:ratnakirtiscr@gmail.com)
-[![Discord](https://img.shields.io/badge/Discord-MinimeAI%20Community-5865F2?style=for-the-badge&logo=discord)](https://discord.gg/6nkRSETm)
+[![Discord](https://img.shields.io/badge/Discord-Ratna-For-Nerds%20Community-5865F2?style=for-the-badge&logo=discord)](https://discord.gg/zUWK77Yn)
 [![GitHub](https://img.shields.io/badge/GitHub-%40ratna3-181717?style=for-the-badge&logo=github)](https://github.com/ratna3)
 [![Twitter](https://img.shields.io/badge/X-%40RatnaKirti1-000000?style=for-the-badge&logo=x)](https://x.com/RatnaKirti1)
 
